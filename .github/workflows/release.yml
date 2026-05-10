@@ -1,0 +1,22 @@
+name: Release
+run-name: "Release ${{ github.ref_name }}"
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    uses: itsloopyo/cameraunlock-core/.github/workflows/release-bepinex-mod.yml@main
+    with:
+      csproj-path: src/ValheimHeadTracking/ValheimHeadTracking.csproj
+      project-name: "Head Tracking for Valheim"
+      build-output-dir: src/ValheimHeadTracking/bin/Release/net48
+      mod-name: ValheimHeadTracking
+      mod-dlls: "ValheimHeadTracking.dll CameraUnlock.Core.dll CameraUnlock.Core.Unity.dll CameraUnlock.Core.Unity.BepInEx.dll"
+      artifact-paths: "src/ValheimHeadTracking/ cameraunlock-core scripts/install.cmd scripts/uninstall.cmd prebuilt/"
+      prebuilt-dir: prebuilt
+      create-nexus-zip: "true"
+    permissions:
+      contents: write

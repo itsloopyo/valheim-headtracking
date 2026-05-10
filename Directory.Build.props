@@ -1,0 +1,9 @@
+<Project>
+  <!-- Set UnityEnginePath and BepInExPath for all projects including submodules -->
+  <PropertyGroup Condition="'$(UnityEnginePath)' == ''">
+    <UnityEnginePath>$(MSBuildThisFileDirectory)src\ValheimHeadTracking\libs</UnityEnginePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BepInExPath)' == ''">
+    <BepInExPath>$(MSBuildThisFileDirectory)src\ValheimHeadTracking\libs</BepInExPath>
+  </PropertyGroup>
+</Project>
