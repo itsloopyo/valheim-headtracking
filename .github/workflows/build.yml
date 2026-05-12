@@ -222,21 +222,10 @@ jobs:
           Expand-Archive -Path $zip.FullName -DestinationPath $out -Force
           Write-Host "Staged $($zip.Name) -> $out" -ForegroundColor Green
 
-      - name: Compute artifact name from ref
-        id: artifact-name
-        shell: pwsh
-        run: |
-          $refName = "${{ github.ref_name }}"
-          $sanitized = ($refName -replace '[^A-Za-z0-9._-]', '-').Trim('-')
-          if ([string]::IsNullOrEmpty($sanitized)) { $sanitized = 'build' }
-          $name = "ValheimHeadTracking-$sanitized"
-          Write-Host "Artifact name: $name"
-          "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-
       - name: Upload installer artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.artifact-name.outputs.name }}
+          name: ValheimHeadTracking-installer
           path: release/artifact-contents/
           retention-days: 14
           if-no-files-found: error
