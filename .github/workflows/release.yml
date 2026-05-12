@@ -163,7 +163,7 @@ jobs:
       - name: Generate release notes
         shell: pwsh
         run: |
-          $artifactPaths = @("src/ValheimHeadTracking/", "cameraunlock-core", "scripts/install.cmd", "scripts/uninstall.cmd")
+          $artifactPaths = @("src/ValheimHeadTracking/", "cameraunlock-core", "scripts/install.cmd", "scripts/uninstall.cmd", ".github/workflows/")
           & cameraunlock-core/scripts/generate-release-notes.ps1 `
             -Version "${{ steps.version.outputs.version }}" `
             -ArtifactPaths $artifactPaths `
