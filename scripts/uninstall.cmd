@@ -13,6 +13,7 @@ set "MOD_INTERNAL_NAME=ValheimHeadTracking"
 set "STATE_FILE=.headtracking-state.json"
 set "FRAMEWORK_TYPE=BepInEx"
 set "LEGACY_DLLS=HeadCannon.Core.dll HeadCannon.Core.Unity.dll HeadCannon.Core.Unity.BepInEx.dll"
+set "PLUGIN_SUBFOLDER=ValheimHeadTracking"
 
 :: --- Loader-specific config (leave the ones that don't apply blank) ---
 :: MonoCecil: used to find + restore the original Assembly-CSharp.dll.
