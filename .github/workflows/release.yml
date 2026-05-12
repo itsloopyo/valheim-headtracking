@@ -8,15 +8,181 @@ on:
 
 jobs:
   release:
-    uses: itsloopyo/cameraunlock-core/.github/workflows/release-bepinex-mod.yml@main
-    with:
-      csproj-path: src/ValheimHeadTracking/ValheimHeadTracking.csproj
-      project-name: "Head Tracking for Valheim"
-      build-output-dir: src/ValheimHeadTracking/bin/Release/net48
-      mod-name: ValheimHeadTracking
-      mod-dlls: "ValheimHeadTracking.dll CameraUnlock.Core.dll CameraUnlock.Core.Unity.dll CameraUnlock.Core.Unity.BepInEx.dll"
-      artifact-paths: "src/ValheimHeadTracking/ cameraunlock-core scripts/install.cmd scripts/uninstall.cmd prebuilt/"
-      prebuilt-dir: prebuilt
-      create-nexus-zip: "true"
+    name: Build and Release
+    runs-on: windows-latest
+    timeout-minutes: 30
     permissions:
       contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Extract version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ($tag -notmatch '^v(\d+\.\d+\.\d+)$') {
+            Write-Host "::error::Tag format invalid. Use semantic versioning: v1.2.3"
+            exit 1
+          }
+          $version = $matches[1]
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Validate version matches csproj
+        shell: pwsh
+        run: |
+          Import-Module ./cameraunlock-core/powershell/ReleaseWorkflow.psm1 -Force
+          $csprojVersion = Get-CsprojVersion "src/ValheimHeadTracking/ValheimHeadTracking.csproj"
+          $tagVersion = "${{ steps.version.outputs.version }}"
+          if ($csprojVersion -ne $tagVersion) {
+            Write-Host "::error::Version mismatch! Tag is v$tagVersion but csproj has $csprojVersion"
+            exit 1
+          }
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache game libraries
+        id: cache-libs
+        uses: actions/cache@v4
+        with:
+          path: src/ValheimHeadTracking/libs
+          key: valheim-libs-v1
+
+      - name: Setup SteamCMD
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        uses: CyberAndrii/setup-steamcmd@v1
+
+      - name: Initialize SteamCMD
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: steamcmd +quit
+
+      - name: Download Valheim Dedicated Server
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $maxAttempts = 4
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            Write-Host "Downloading Valheim Dedicated Server (attempt $attempt/$maxAttempts)..." -ForegroundColor Cyan
+            steamcmd +force_install_dir "${{ github.workspace }}\valheim-server" +login anonymous +app_info_update 1 +app_update 896660 validate +quit
+            if ($LASTEXITCODE -eq 0) { break }
+            if ($attempt -eq $maxAttempts) {
+              Write-Host "::error::Failed to download Valheim Dedicated Server after $maxAttempts attempts"
+              exit 1
+            }
+            $delay = [math]::Min(60, [math]::Pow(2, $attempt) * 5)
+            Start-Sleep -Seconds $delay
+          }
+
+      - name: Download BepInEx
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $bepinexUrl = "https://github.com/BepInEx/BepInEx/releases/download/v5.4.23.4/BepInEx_win_x64_5.4.23.4.zip"
+          $expectedHash = "F881201B79DA03E513BF97CDF39607FFA7F9E0D31A519B1AEECA8EB60F8309E7"
+          Invoke-WebRequest -Uri $bepinexUrl -OutFile bepinex.zip
+          $actualHash = (Get-FileHash -Path bepinex.zip -Algorithm SHA256).Hash
+          if ($actualHash -ne $expectedHash) {
+            Write-Host "::error::BepInEx hash mismatch! Expected: $expectedHash Got: $actualHash"
+            exit 1
+          }
+          Expand-Archive -Path bepinex.zip -DestinationPath bepinex-temp
+          New-Item -ItemType Directory -Path "src/ValheimHeadTracking/libs" -Force | Out-Null
+          Copy-Item bepinex-temp/BepInEx/core/BepInEx.dll "src/ValheimHeadTracking/libs/"
+          Copy-Item bepinex-temp/BepInEx/core/0Harmony.dll "src/ValheimHeadTracking/libs/"
+          Remove-Item bepinex.zip
+          Remove-Item -Recurse bepinex-temp
+
+      - name: Copy game libraries
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $managedPath = "${{ github.workspace }}\valheim-server\valheim_server_Data\Managed"
+          $libsDir = "src/ValheimHeadTracking/libs"
+          $dlls = @(
+            "assembly_valheim.dll",
+            "UnityEngine.dll",
+            "UnityEngine.CoreModule.dll",
+            "UnityEngine.IMGUIModule.dll",
+            "UnityEngine.InputLegacyModule.dll",
+            "UnityEngine.PhysicsModule.dll",
+            "UnityEngine.TextRenderingModule.dll",
+            "UnityEngine.UI.dll",
+            "UnityEngine.UIModule.dll"
+          )
+          foreach ($dll in $dlls) {
+            $source = Join-Path $managedPath $dll
+            if (-not (Test-Path $source)) {
+              Write-Host "::error::Missing required DLL: $dll at $source"
+              exit 1
+            }
+            Copy-Item $source "$libsDir/" -Force
+          }
+
+      - name: Restore NuGet packages
+        run: dotnet restore src/ValheimHeadTracking/ValheimHeadTracking.csproj
+
+      - name: Build Release
+        shell: pwsh
+        run: |
+          dotnet build src/ValheimHeadTracking/ValheimHeadTracking.csproj --configuration Release
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::Release build failed"; exit 1 }
+
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          $dll = "src/ValheimHeadTracking/bin/Release/net48/ValheimHeadTracking.dll"
+          if (-not (Test-Path $dll)) { Write-Host "::error::Missing build output: $dll"; exit 1 }
+          $hash = (Get-FileHash $dll -Algorithm SHA256).Hash
+          Write-Host "Built ValheimHeadTracking.dll SHA256: $hash" -ForegroundColor Green
+
+      - name: Package release ZIPs
+        id: package
+        shell: pwsh
+        run: |
+          & powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::Packaging failed"; exit 1 }
+
+          $installerZip = (Get-ChildItem release/*-installer.zip | Select-Object -First 1).FullName
+          $nexusZip = (Get-ChildItem release/*-nexus.zip -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+
+          if (-not $installerZip) { Write-Host "::error::installer zip not produced"; exit 1 }
+
+          echo "installer_zip=$installerZip" >> $env:GITHUB_OUTPUT
+          if ($nexusZip) { echo "nexus_zip=$nexusZip" >> $env:GITHUB_OUTPUT }
+
+      - name: Generate release notes
+        shell: pwsh
+        run: |
+          $artifactPaths = @("src/ValheimHeadTracking/", "cameraunlock-core", "scripts/install.cmd", "scripts/uninstall.cmd")
+          & cameraunlock-core/scripts/generate-release-notes.ps1 `
+            -Version "${{ steps.version.outputs.version }}" `
+            -ArtifactPaths $artifactPaths `
+            -ProjectName "Head Tracking for Valheim"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.version.outputs.tag }}"
+          $installerZip = "${{ steps.package.outputs.installer_zip }}"
+          $nexusZip = "${{ steps.package.outputs.nexus_zip }}"
+          $assets = @($installerZip)
+          if ($nexusZip) { $assets += $nexusZip }
+
+          gh release create $tag `
+            --title "Head Tracking for Valheim $tag" `
+            --notes-file "release-notes.txt" `
+            @assets
+
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::Failed to create GitHub release"; exit 1 }
