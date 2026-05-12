@@ -2,7 +2,7 @@
 name = "valheim-head-tracking"
 # Mirrors src/ValheimHeadTracking/ValheimHeadTracking.csproj <Version>.
 # release.ps1 keeps these in sync; csproj is canonical.
-version = "0.1.1"
+version = "0.1.2"
 description = "Head tracking mod for Valheim with aim decoupling"
 channels = ["conda-forge"]
 platforms = ["win-64"]

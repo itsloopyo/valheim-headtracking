@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2] - 2026-05-12
+
+### Other
+
+- Set PLUGIN_SUBFOLDER for Valheim plugin layout
+- Add PLUGIN_SUBFOLDER support to BepInEx install/uninstall bodies
+
 ## [0.1.1] - 2026-05-12
 
 ### Other
