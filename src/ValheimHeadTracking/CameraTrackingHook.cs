@@ -153,15 +153,11 @@ namespace ValheimHeadTracking
                 HeadTrackingConfig.CachedPositionLimitY);
             float offZ = posOffset.Z;
 
-            // Rotate the body-frame offset (X=right, Y=up, Z=forward) into world space using
-            // the player's body yaw only — pitch is excluded so leaning forward never moves
-            // the view vertically when the player is mouse-looking up/down.
-            float bodyYawDeg = _camera.transform.eulerAngles.y;
-            Quaternion bodyYaw = Quaternion.AngleAxis(bodyYawDeg, Vector3.up);
-            Vector3 worldOffset = bodyYaw * new Vector3(offX, offY, offZ);
+            Vector3 worldOffset =
+                _camera.transform.right * offX +
+                _camera.transform.up * offY +
+                _camera.transform.forward * offZ;
 
-            // Apply as world-space translation on the view matrix: V' = V * T(-worldOffset).
-            // Closed-form column update — 9 mults + 9 subtracts vs a full 4x4 multiply.
             Matrix4x4 m = _camera.worldToCameraMatrix;
             m.m03 -= (m.m00 * worldOffset.x + m.m01 * worldOffset.y + m.m02 * worldOffset.z);
             m.m13 -= (m.m10 * worldOffset.x + m.m11 * worldOffset.y + m.m12 * worldOffset.z);
