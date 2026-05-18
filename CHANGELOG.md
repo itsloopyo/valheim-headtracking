@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.4] - 2026-05-18
+
+### Other
+
+- Enable readme demo clip
+- Cycle tracking modes and widen vertical position limits
+- scripts: drop the two-phase loader-init prompt from install bodies
+- data: add Black & White (Lionhead) to games registry
+- scripts: detect BepInEx 6 IL2CPP via BepInEx.Core.dll marker
+- powershell: skip cameraunlock-core remote refresh in CI
+- scripts: add UE4SS install template, fix delayed expansion in ASI body, expand games registry
+
 
 ## [0.1.3] - 2026-05-12
 

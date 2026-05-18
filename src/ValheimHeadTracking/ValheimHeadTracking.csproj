@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <AssemblyName>ValheimHeadTracking</AssemblyName>
     <RootNamespace>ValheimHeadTracking</RootNamespace>
-    <Version>0.1.3</Version>
+    <Version>0.1.4</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
