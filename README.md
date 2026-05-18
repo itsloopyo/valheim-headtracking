@@ -2,7 +2,7 @@
 
 An unofficial flatscreen head tracking mod for Valheim that decouples looking from aiming, so you can glance around the world with your head while your mouse still controls where you shoot.
 
-<!-- ![Mod GIF](https://raw.githubusercontent.com/itsloopyo/valheim-headtracking/main/assets/readme-clip.gif) -->
+![Mod GIF](https://raw.githubusercontent.com/itsloopyo/valheim-headtracking/main/assets/readme-clip.gif)
 
 ## Features
 
