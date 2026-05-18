@@ -61,18 +61,18 @@ namespace ValheimHeadTracking
             _positionLimitY = config.Bind(
                 "Position",
                 "PositionLimitY",
-                0.15f,
+                0.60f,
                 new ConfigDescription(
                     "Maximum upward vertical displacement in meters",
-                    new AcceptableValueRange<float>(0f, 0.5f)));
+                    new AcceptableValueRange<float>(0f, 1.5f)));
 
             _positionLimitYDown = config.Bind(
                 "Position",
                 "PositionLimitYDown",
-                0.05f,
+                0.40f,
                 new ConfigDescription(
                     "Maximum downward vertical displacement in meters",
-                    new AcceptableValueRange<float>(0f, 0.5f)));
+                    new AcceptableValueRange<float>(0f, 1.5f)));
 
             _worldSpaceYaw = config.Bind(
                 "General",

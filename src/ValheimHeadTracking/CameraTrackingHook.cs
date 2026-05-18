@@ -32,13 +32,6 @@ namespace ValheimHeadTracking
         /// </summary>
         public Vector3 LastAppliedRotation => _lastAppliedRotation;
 
-        /// <summary>Whether positional tracking is enabled.</summary>
-        public static bool PositionEnabled
-        {
-            get => Position.Enabled;
-            set => Position.Enabled = value;
-        }
-
         /// <summary>Resets position processing state (zeroes out offset).</summary>
         public static void ResetPosition() => Position.Reset();
 
@@ -124,26 +117,34 @@ namespace ValheimHeadTracking
             // Get processed head tracking rotation (sensitivity, inversion, limits already applied)
             var (trackYaw, trackPitch, trackRoll) = OpenTrackReceiver.GetProcessedRotation(dt);
 
-            // Apply rotation via view matrix (camera.transform stays untouched)
-            if (HeadTrackingConfig.CachedWorldSpaceYaw)
+            if (TrackingModeState.IsRotationEnabled)
             {
-                ViewMatrixModifier.ApplyHeadRotationDecomposed(_camera, trackYaw, trackPitch, trackRoll);
+                if (HeadTrackingConfig.CachedWorldSpaceYaw)
+                {
+                    ViewMatrixModifier.ApplyHeadRotationDecomposed(_camera, trackYaw, trackPitch, trackRoll);
+                }
+                else
+                {
+                    ViewMatrixModifier.ApplyHeadRotation(_camera, trackYaw, trackPitch, trackRoll);
+                }
+                _lastAppliedRotation = new Vector3(trackPitch, trackYaw, trackRoll);
             }
             else
             {
-                ViewMatrixModifier.ApplyHeadRotation(_camera, trackYaw, trackPitch, trackRoll);
+                ViewMatrixModifier.Reset(_camera);
+                _lastAppliedRotation = Vector3.zero;
             }
             _wasTracking = true;
-            _lastAppliedRotation = new Vector3(trackPitch, trackYaw, trackRoll);
 
-            ApplyPositionOffset(trackYaw, trackPitch, trackRoll, dt);
+            if (TrackingModeState.IsPositionEnabled)
+            {
+                ApplyPositionOffset(trackYaw, trackPitch, trackRoll, dt);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ApplyPositionOffset(float trackYaw, float trackPitch, float trackRoll, float dt)
         {
-            if (!Position.Enabled) return;
-
             Quat4 headRotQ = QuaternionUtils.FromYawPitchRoll(trackYaw, trackPitch, trackRoll);
             Vec3 posOffset = Position.Process(OpenTrackReceiver.GetLatestPosition(), headRotQ, dt);
 
@@ -185,14 +186,12 @@ namespace ValheimHeadTracking
             {
                 Settings = new PositionSettings(
                     sensitivityX: 2.0f, sensitivityY: 2.0f, sensitivityZ: 2.0f,
-                    limitX: 0.30f, limitY: 0.05f, limitZ: 0.40f, limitZBack: 0.10f,
+                    limitX: 0.60f, limitY: 0.60f, limitZ: 0.80f, limitZBack: 0.60f,
                     smoothing: 0.15f,
                     invertX: true, invertY: false, invertZ: true)
             };
 
             private readonly PositionInterpolator _interpolator = new PositionInterpolator();
-
-            public bool Enabled { get; set; } = true;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public Vec3 Process(PositionData rawPos, Quat4 headRot, float dt)

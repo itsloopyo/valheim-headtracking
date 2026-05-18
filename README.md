@@ -1,6 +1,6 @@
 # Valheim Head Tracking
 
-An unofficial flatscreen head tracking mod for Valheim that decouples looking from aiming, so you can glance around the world with your head while your mouse still controls where you shoot.
+An unofficial flatscreen head tracking mod for Valheim that decouples looking from aiming, so you can glance around the world with your head while your mouse still controls where you aim.
 
 ![Mod GIF](https://raw.githubusercontent.com/itsloopyo/valheim-headtracking/main/assets/readme-clip.gif)
 
@@ -8,6 +8,7 @@ An unofficial flatscreen head tracking mod for Valheim that decouples looking fr
 
 - **Decoupled look and aim** - head tracking moves the camera; aim stays on your mouse.
 - **6DOF positional tracking** - lean, peek, and duck with head position in addition to yaw / pitch / roll.
+- **Cycle tracking modes** - one key cycles between full 6DOF, 3DOF rotation only, and 3DOF position only.
 
 ## Requirements
 
@@ -72,11 +73,13 @@ This mod includes built-in smoothing for network jitter, so you can send directl
 
 Two equivalent binding sets - use whichever your keyboard has. The chord letters sit in the middle of the keyboard so they work on laptops without a nav cluster.
 
+The tracking-mode cycle steps through **6DOF (rotation + position) -> 3DOF rotation only -> 3DOF position only -> 6DOF**. Use the master toggle (`End` / `Ctrl+Shift+Y`) to turn tracking off entirely.
+
 | Action                     | Nav-cluster | Chord           |
 |----------------------------|-------------|-----------------|
 | Recenter view              | `Home`      | `Ctrl+Shift+T`  |
 | Toggle head tracking       | `End`       | `Ctrl+Shift+Y`  |
-| Toggle positional tracking | `Page Up`   | `Ctrl+Shift+G`  |
+| Cycle tracking mode        | `Page Up`   | `Ctrl+Shift+G`  |
 | Toggle yaw mode            | `Page Down` | `Ctrl+Shift+H`  |
 | Toggle aim reticle         | `Insert`    | `Ctrl+Shift+U`  |
 
@@ -114,8 +117,8 @@ EnableAimDecoupling = true       # Separate aim from head movement
 ShowDecoupledCrosshair = true    # Move crosshair to the actual aim position
 
 [Position]
-PositionLimitY = 0.15            # Max upward vertical offset in meters (0.0-0.5)
-PositionLimitYDown = 0.05        # Max downward vertical offset in meters (0.0-0.5)
+PositionLimitY = 0.60            # Max upward vertical offset in meters (0.0-1.5)
+PositionLimitYDown = 0.40        # Max downward vertical offset in meters (0.0-1.5)
 ```
 
 Delete the file to reset all settings to defaults.

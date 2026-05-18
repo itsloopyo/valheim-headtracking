@@ -16,7 +16,7 @@ namespace ValheimHeadTracking
     {
         private BepInExHotkeyHandler _handler;
 
-        private NavKeyBinding _positionBinding;
+        private NavKeyBinding _cycleModeBinding;
         private NavKeyBinding _reticleBinding;
         private NavKeyBinding _yawModeBinding;
 
@@ -28,7 +28,7 @@ namespace ValheimHeadTracking
             _handler.OnRecenter += HandleRecenter;
             _handler.OnToggle += HandleToggle;
 
-            _positionBinding = new NavKeyBinding(HeadTrackingConfig.PositionToggleKey, TogglePosition);
+            _cycleModeBinding = new NavKeyBinding(HeadTrackingConfig.PositionToggleKey, CycleTrackingMode);
             _reticleBinding = new NavKeyBinding(HeadTrackingConfig.ReticleToggleKey, ToggleReticle);
             _yawModeBinding = new NavKeyBinding(HeadTrackingConfig.YawModeKey, ToggleYawMode);
         }
@@ -43,12 +43,12 @@ namespace ValheimHeadTracking
             {
                 if (Input.GetKeyDown(KeyCode.T)) HandleRecenter();
                 if (Input.GetKeyDown(KeyCode.Y)) HandleToggle(TrackingState.Toggle());
-                if (Input.GetKeyDown(KeyCode.G)) TogglePosition();
+                if (Input.GetKeyDown(KeyCode.G)) CycleTrackingMode();
                 if (Input.GetKeyDown(KeyCode.H)) ToggleYawMode();
                 if (Input.GetKeyDown(KeyCode.U)) ToggleReticle();
             }
 
-            _positionBinding.Poll();
+            _cycleModeBinding.Poll();
             _reticleBinding.Poll();
             _yawModeBinding.Poll();
         }
@@ -57,16 +57,16 @@ namespace ValheimHeadTracking
             (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) &&
             (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift));
 
-        private void TogglePosition()
+        private void CycleTrackingMode()
         {
-            CameraTrackingHook.PositionEnabled = !CameraTrackingHook.PositionEnabled;
-            if (!CameraTrackingHook.PositionEnabled)
+            TrackingMode mode = TrackingModeState.Cycle();
+            if (!TrackingModeState.IsPositionEnabled)
             {
                 CameraTrackingHook.ResetPosition();
             }
-            string stateText = CameraTrackingHook.PositionEnabled ? "ON" : "OFF";
-            ShowMessage($"Position Tracking: {stateText}");
-            ValheimHeadTrackingPlugin.Log.LogInfo($"Position tracking toggled: {stateText}");
+            string desc = TrackingModeState.Describe(mode);
+            ShowMessage($"Tracking: {desc}");
+            ValheimHeadTrackingPlugin.Log.LogInfo($"Tracking mode: {desc}");
         }
 
         private void ToggleReticle()
