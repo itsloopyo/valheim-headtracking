@@ -27,6 +27,17 @@ release/
 # AI tooling
 .claude/
 .millhouse/
+.lab/
+AGENTS.md
+CLAUDE.md
+.mcp.json
+mcp.json
+.cursor/
+.cursorrules
+.aider*
+
+# Nexus listing draft
+NEXUS_MODS.md
 
 # OS
 .DS_Store
