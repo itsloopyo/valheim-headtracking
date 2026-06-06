@@ -21,10 +21,8 @@ namespace ValheimHeadTracking
         private ConfigEntry<bool> _worldSpaceYaw;
         private ConfigEntry<KeyCode> _yawModeKey;
 
-        // Hot-path caches. Refreshed in OnRefreshCache() which the base class triggers
+        // Hot-path cache. Refreshed in OnRefreshCache() which the base class triggers
         // on every SettingChanged event. Avoids ConfigEntry<T>.Value dictionary lookups per frame.
-        private float _cachedPositionLimitY;
-        private float _cachedPositionLimitYDown;
         private bool _cachedWorldSpaceYaw;
 
         private static HeadTrackingConfig Instance =>
@@ -92,8 +90,10 @@ namespace ValheimHeadTracking
             // Run it now to populate subclass caches.
             RefreshCache();
 
-            _positionLimitY.SettingChanged += (_, __) => RefreshCache();
-            _positionLimitYDown.SettingChanged += (_, __) => RefreshCache();
+            // Position limits live inside the processor's PositionSettings, not a per-frame
+            // cache, so changes must be pushed into the tracking pipeline.
+            _positionLimitY.SettingChanged += (_, __) => OpenTrackReceiver.UpdateProcessorSettings();
+            _positionLimitYDown.SettingChanged += (_, __) => OpenTrackReceiver.UpdateProcessorSettings();
             _worldSpaceYaw.SettingChanged += (_, __) => RefreshCache();
         }
 
@@ -101,10 +101,8 @@ namespace ValheimHeadTracking
         {
             // Base RefreshCache() fires once during base Initialize() before OnInitialize
             // binds these entries. Skip until bindings exist.
-            if (_positionLimitY == null) return;
+            if (_worldSpaceYaw == null) return;
 
-            _cachedPositionLimitY = _positionLimitY.Value;
-            _cachedPositionLimitYDown = _positionLimitYDown.Value;
             _cachedWorldSpaceYaw = _worldSpaceYaw.Value;
         }
 
@@ -144,8 +142,6 @@ namespace ValheimHeadTracking
         public static ConfigEntry<KeyCode> YawModeKey => Instance._yawModeKey;
 
         // --- Valheim-specific cached values ---
-        public static float CachedPositionLimitY => Instance._cachedPositionLimitY;
-        public static float CachedPositionLimitYDown => Instance._cachedPositionLimitYDown;
         public static bool CachedWorldSpaceYaw => Instance._cachedWorldSpaceYaw;
     }
 }

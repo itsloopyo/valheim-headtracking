@@ -1,20 +1,35 @@
-using System;
-using System.Runtime.CompilerServices;
 using CameraUnlock.Core.Data;
 using CameraUnlock.Core.Processing;
-using CameraUnlock.Core.Protocol;
+using CameraUnlock.Core.Tracking;
 
 namespace ValheimHeadTracking
 {
     /// <summary>
-    /// Static wrapper around CameraUnlock.Core.Protocol.OpenTrackReceiver and TrackingProcessor.
-    /// Provides the same static API that Valheim mod code expects while delegating
-    /// to the shared library for UDP reception, processing, and lock-free data access.
+    /// Static wrapper that owns the shared UDP receiver and HeadTrackingSession
+    /// (receiver -> interpolators -> processors) for the lifetime of the plugin.
+    /// The session provides pose interpolation, hold-on-tracking-loss, and
+    /// stabilized auto-recenter on tracker connection.
     /// </summary>
     public static class OpenTrackReceiver
     {
+        // Valheim's third-person camera sits far from the player model, so positional
+        // tracking needs boosted sensitivity and wider limits than the core defaults
+        // for leaning to be perceptible.
+        private const float PositionSensitivity = 2.0f;
+        private const float PositionLimitX = 0.60f;
+        private const float PositionLimitZ = 0.80f;
+        private const float PositionLimitZBack = 0.60f;
+        private const float PositionSmoothing = 0.15f;
+
         private static CameraUnlock.Core.Protocol.OpenTrackReceiver _receiver;
         private static TrackingProcessor _processor;
+        private static PositionProcessor _positionProcessor;
+        private static HeadTrackingSession _session;
+
+        /// <summary>
+        /// The per-frame tracking pipeline. Null until <see cref="Start"/> is called.
+        /// </summary>
+        public static HeadTrackingSession Session => _session;
 
         /// <summary>
         /// True if the UDP socket failed to bind (port in use or other error).
@@ -24,16 +39,12 @@ namespace ValheimHeadTracking
         /// <summary>
         /// True if packets have been received within the last 500ms.
         /// </summary>
-        public static bool IsReceiving
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _receiver?.IsReceiving ?? false;
-        }
+        public static bool IsReceiving => _receiver?.IsReceiving ?? false;
 
         /// <summary>
-        /// Starts the UDP receiver on the specified port and initializes the processor.
+        /// Starts the UDP receiver on the specified port and builds the tracking session.
         /// If the port is in use, the core receiver logs the failure and retries in the
-        /// background — callers can observe state via <see cref="IsFailed"/> / <see cref="IsReceiving"/>.
+        /// background - callers can observe state via <see cref="IsFailed"/> / <see cref="IsReceiving"/>.
         /// </summary>
         public static void Start(int port)
         {
@@ -47,6 +58,11 @@ namespace ValheimHeadTracking
             _receiver.Log = msg => ValheimHeadTrackingPlugin.Log.LogInfo(msg);
 
             _processor = new TrackingProcessor { SmoothingFactor = 0f };
+            _positionProcessor = new PositionProcessor();
+            _session = new HeadTrackingSession(_receiver, _processor, _positionProcessor)
+            {
+                Log = msg => ValheimHeadTrackingPlugin.Log.LogInfo(msg)
+            };
             UpdateProcessorSettings();
 
             if (_receiver.Start(port))
@@ -56,7 +72,7 @@ namespace ValheimHeadTracking
         }
 
         /// <summary>
-        /// Updates the processor settings from cached config values.
+        /// Updates the processor settings from config values.
         /// Call this when config values change.
         /// </summary>
         public static void UpdateProcessorSettings()
@@ -74,6 +90,15 @@ namespace ValheimHeadTracking
                 !HeadTrackingConfig.CachedInvertPitch,  // Inverted: default needs negation
                 HeadTrackingConfig.CachedInvertRoll
             );
+
+            _positionProcessor.Settings = new PositionSettings(
+                PositionSensitivity, PositionSensitivity, PositionSensitivity,
+                PositionLimitX,
+                HeadTrackingConfig.PositionLimitY.Value,
+                HeadTrackingConfig.PositionLimitYDown.Value,
+                PositionLimitZ, PositionLimitZBack,
+                PositionSmoothing,
+                invertX: true, invertY: false, invertZ: true);
         }
 
         /// <summary>
@@ -86,79 +111,19 @@ namespace ValheimHeadTracking
             _receiver.Dispose();
             _receiver = null;
             _processor = null;
+            _positionProcessor = null;
+            _session = null;
             ValheimHeadTrackingPlugin.Log.LogInfo("OpenTrackReceiver stopped");
         }
 
         /// <summary>
-        /// Gets the processed rotation values using TrackingProcessor.
-        /// Applies center offset, deadzone, sensitivity, inversion, and limits.
+        /// Sets the current head pose and position as the new center.
         /// Caller MUST check IsReceiving before calling this method.
         /// </summary>
-        /// <param name="deltaTime">Frame delta time for smoothing calculations.</param>
-        /// <returns>Processed rotation tuple (Yaw, Pitch, Roll) in degrees.</returns>
-        /// <exception cref="InvalidOperationException">Thrown if receiver is not started.</exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static (float Yaw, float Pitch, float Roll) GetProcessedRotation(float deltaTime)
-        {
-            EnsureStarted();
-            var rawPose = _receiver.GetLatestPose();
-            var processed = _processor.Process(rawPose, deltaTime);
-            return (processed.Yaw, processed.Pitch, processed.Roll);
-        }
-
-        /// <summary>
-        /// Gets the raw rotation values without sensitivity or inversion applied.
-        /// Caller MUST check IsReceiving before calling this method.
-        /// </summary>
-        /// <exception cref="InvalidOperationException">Thrown if receiver is not started.</exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static (float Yaw, float Pitch, float Roll) GetRawRotation()
-        {
-            EnsureStarted();
-            _receiver.GetRawRotation(out float yaw, out float pitch, out float roll);
-            return (yaw, pitch, roll);
-        }
-
-        /// <summary>
-        /// Sets the current head position as the new center point.
-        /// Uses the processor's CenterOffsetManager for proper offset tracking.
-        /// Caller MUST check IsReceiving before calling this method.
-        /// </summary>
-        /// <exception cref="InvalidOperationException">Thrown if receiver is not started.</exception>
         public static void Recenter()
         {
-            EnsureStarted();
-            var rawPose = _receiver.GetLatestPose();
-            _processor.RecenterTo(rawPose);
-            ValheimHeadTrackingPlugin.Log.LogInfo($"Recentered at Yaw={rawPose.Yaw:F2}, Pitch={rawPose.Pitch:F2}, Roll={rawPose.Roll:F2}");
-        }
-
-        /// <summary>
-        /// Gets the latest position data from the receiver.
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PositionData GetLatestPosition()
-        {
-            EnsureStarted();
-            return _receiver.GetLatestPosition();
-        }
-
-        /// <summary>
-        /// Resets the processor state (clears center offset and smoothing).
-        /// </summary>
-        public static void Reset()
-        {
-            _processor?.Reset();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void EnsureStarted()
-        {
-            if (_receiver == null || _processor == null)
-            {
-                throw new InvalidOperationException(
-                    "OpenTrackReceiver is not started. Call Start() first or check IsReceiving before invoking.");
-            }
+            _session.Recenter();
+            ValheimHeadTrackingPlugin.Log.LogInfo("Head tracking recentered");
         }
     }
 }

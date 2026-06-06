@@ -49,6 +49,16 @@ If you prefer to place files by hand, or the installer can't locate your game:
 4. Host: `127.0.0.1`, Port: `4242`.
 5. Start tracking before launching the game.
 
+### VR Headset Setup
+
+If you own a VR headset, it makes an excellent tracker for flatscreen play.
+
+1. Connect your headset to the PC via Air Link or [Virtual Desktop](https://www.vrdesktop.net/), and launch SteamVR.
+2. In OpenTrack, set the input to **SteamVR**.
+3. Set output to **UDP over network** (`127.0.0.1:4242`).
+4. Start tracking before launching the game.
+5. Recenter via OpenTrack's hotkey, then press **Home** in-game to recenter the mod.
+
 ### Webcam Setup
 
 No special hardware needed - OpenTrack's built-in **neuralnet tracker** uses any webcam for 6DOF face tracking.
@@ -98,7 +108,7 @@ UdpPort = 4242                   # Must match OpenTrack output port
 [Hotkeys]
 ToggleKey = End
 RecenterKey = Home
-PositionToggleKey = PageUp
+PositionToggleKey = PageUp        # Cycles 6DOF -> 3DOF rotation only -> 3DOF position only
 ReticleToggleKey = Insert
 YawModeKey = PageDown
 

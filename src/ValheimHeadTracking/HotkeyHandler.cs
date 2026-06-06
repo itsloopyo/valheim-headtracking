@@ -1,7 +1,9 @@
 using System;
 using BepInEx.Configuration;
 using CameraUnlock.Core.State;
+using CameraUnlock.Core.Tracking;
 using CameraUnlock.Core.Unity.BepInEx.Input;
+using CameraUnlock.Core.Unity.Extensions;
 using UnityEngine;
 
 namespace ValheimHeadTracking
@@ -9,8 +11,8 @@ namespace ValheimHeadTracking
     /// <summary>
     /// Handles hotkey input for toggling head tracking and recentering.
     /// Uses the shared BepInExHotkeyHandler for recenter/toggle, and polls additional
-    /// nav-cluster keys (position, reticle, yaw-mode) plus Ctrl+Shift+letter chord
-    /// fallbacks. Hotkeys are blocked during text input (chat, console, sign editing).
+    /// nav-cluster keys (cycle mode, reticle, yaw-mode) plus the shared Ctrl+Shift+letter
+    /// chord bindings. Hotkeys are blocked during text input (chat, console, sign editing).
     /// </summary>
     public class HotkeyHandler : MonoBehaviour
     {
@@ -37,34 +39,26 @@ namespace ValheimHeadTracking
         {
             if (IsTextInputActive()) return;
 
-            // Chord bindings: Ctrl+Shift+<letter>. Registered unconditionally alongside the
-            // user-configurable nav-cluster keys so keyboards without a nav cluster still work.
-            if (IsCtrlShiftHeld())
-            {
-                if (Input.GetKeyDown(KeyCode.T)) HandleRecenter();
-                if (Input.GetKeyDown(KeyCode.Y)) HandleToggle(TrackingState.Toggle());
-                if (Input.GetKeyDown(KeyCode.G)) CycleTrackingMode();
-                if (Input.GetKeyDown(KeyCode.H)) ToggleYawMode();
-                if (Input.GetKeyDown(KeyCode.U)) ToggleReticle();
-            }
+            // Chord bindings: Ctrl+Shift+<letter> from the shared T/Y/G/H/U cluster,
+            // so keyboards without a nav cluster still work.
+            if (ChordHotkeys.IsPressed(ChordHotkeys.RecenterLetter)) HandleRecenter();
+            if (ChordHotkeys.IsPressed(ChordHotkeys.ToggleLetter)) HandleToggle(TrackingState.Toggle());
+            if (ChordHotkeys.IsPressed(ChordHotkeys.PositionLetter)) CycleTrackingMode();
+            if (ChordHotkeys.IsPressed(ChordHotkeys.FourthToggleLetter)) ToggleYawMode();
+            if (ChordHotkeys.IsPressed(ChordHotkeys.FifthToggleLetter)) ToggleReticle();
 
             _cycleModeBinding.Poll();
             _reticleBinding.Poll();
             _yawModeBinding.Poll();
         }
 
-        private static bool IsCtrlShiftHeld() =>
-            (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) &&
-            (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift));
-
         private void CycleTrackingMode()
         {
-            TrackingMode mode = TrackingModeState.Cycle();
-            if (!TrackingModeState.IsPositionEnabled)
-            {
-                CameraTrackingHook.ResetPosition();
-            }
-            string desc = TrackingModeState.Describe(mode);
+            HeadTrackingSession session = OpenTrackReceiver.Session;
+            if (session == null) return;
+
+            TrackingMode mode = session.CycleMode();
+            string desc = mode.Description();
             ShowMessage($"Tracking: {desc}");
             ValheimHeadTrackingPlugin.Log.LogInfo($"Tracking mode: {desc}");
         }
@@ -110,13 +104,11 @@ namespace ValheimHeadTracking
             }
 
             OpenTrackReceiver.Recenter();
-            CameraTrackingHook.RecenterPosition();
             ShowMessage("Head Tracking: Recentered");
-            ValheimHeadTrackingPlugin.Log.LogInfo("Head tracking recentered");
         }
 
         /// <summary>
-        /// Handles the toggle hotkey press — shows a message with the new state.
+        /// Handles the toggle hotkey press - shows a message with the new state.
         /// </summary>
         private void HandleToggle(bool newState)
         {
