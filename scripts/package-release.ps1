@@ -87,6 +87,25 @@ foreach ($script in @("install.cmd", "uninstall.cmd")) {
     Write-Host "  $script" -ForegroundColor Green
 }
 
+# Canonical launcher manifest. Stamp the real release version and drop it at
+# the installer ZIP root so the launcher can deploy files/loader/dependencies/
+# runtime_requirements natively without parsing install.cmd. This is the file
+# the launcher actually reads (deploy/manifest.rs: MANIFEST_FILE); there is no
+# separate mod.json.
+$manifestSource = Join-Path $projectDir "launcher-manifest.json"
+if (-not (Test-Path $manifestSource)) {
+    throw "launcher-manifest.json not found at repo root: $manifestSource"
+}
+$manifest = Get-Content $manifestSource -Raw | ConvertFrom-Json
+$manifest.mod_info.version = $version
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText(
+    (Join-Path $ghStagingDir "launcher-manifest.json"),
+    ($manifest | ConvertTo-Json -Depth 10),
+    $utf8NoBom
+)
+Write-Host "  launcher-manifest.json" -ForegroundColor Green
+
 # Copy mod DLLs to plugins subfolder
 $pluginsDir = Join-Path $ghStagingDir "plugins"
 New-Item -ItemType Directory -Path $pluginsDir -Force | Out-Null

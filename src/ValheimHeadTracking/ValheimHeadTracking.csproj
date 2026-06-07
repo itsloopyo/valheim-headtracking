@@ -61,4 +61,9 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="libs\**" />
+    <None Remove="libs\**" />
+  </ItemGroup>
+
 </Project>
