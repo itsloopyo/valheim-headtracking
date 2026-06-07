@@ -26,7 +26,10 @@
 #>
 param(
     [Parameter(Position=0)]
-    [string]$Version = ""
+    [string]$Version = "",
+    # Ship a release even when there are no user-facing commits since the
+    # last tag (writes a maintenance changelog entry instead of aborting).
+    [switch]$Force
 )
 
 Set-StrictMode -Version Latest
@@ -41,6 +44,22 @@ $installCmdPath = Join-Path $projectDir "scripts\install.cmd"
 $modManifestPath = Join-Path $projectDir "launcher-manifest.json"
 
 Import-Module (Join-Path $projectDir "cameraunlock-core\powershell\ReleaseWorkflow.psm1") -Force
+
+# Mirrors New-ChangelogFromCommits' insertion so a -Force maintenance entry
+# lands in the same place with the same shape.
+function Add-MaintenanceChangelogEntry {
+    param([string]$Path, [string]$NewVersion)
+    $date = Get-Date -Format 'yyyy-MM-dd'
+    $entry = "## [$NewVersion] - $date`n`n### Changed`n`n- Maintenance release (no user-facing changes).`n`n"
+    $changelog = Get-Content $Path -Raw
+    if ($changelog -match '(?s)(# Changelog.*?)(## \[)') {
+        $changelog = $changelog -replace '(?s)(# Changelog.*?\n\n)', "`$1$entry"
+    } else {
+        $changelog = $changelog -replace '(?s)(# Changelog.*?\n)', "`$1$entry"
+    }
+    $changelog = $changelog.TrimEnd() + "`n"
+    Set-Content $Path $changelog -NoNewline
+}
 
 Write-Host "=== Valheim Head Tracking Release ===" -ForegroundColor Cyan
 Write-Host ""
@@ -92,7 +111,36 @@ Write-Host "Current version: $currentVersion" -ForegroundColor Gray
 Write-Host "New version:     $Version" -ForegroundColor Green
 Write-Host ""
 
-# Step 3: Update version
+# Step 3: Generate CHANGELOG from commits since last tag. This is the gate
+# that aborts when there are no user-facing commits, so run it BEFORE mutating
+# any version files - a failure here then leaves a clean tree instead of
+# stranding a half-applied version bump with no tag.
+Write-Host "Generating CHANGELOG from commits..." -ForegroundColor Cyan
+$changelogPath = Join-Path $projectDir "CHANGELOG.md"
+$hasExistingTags = git tag -l 2>$null
+if (-not $hasExistingTags) {
+    $date = Get-Date -Format 'yyyy-MM-dd'
+    $firstEntry = "# Changelog`n`n## [$Version] - $date`n`nFirst release.`n"
+    Set-Content $changelogPath $firstEntry -NoNewline
+    Write-Host "  First release - wrote initial CHANGELOG entry" -ForegroundColor Gray
+} else {
+    try {
+        New-ChangelogFromCommits `
+            -ChangelogPath $changelogPath `
+            -Version $Version `
+            -ArtifactPaths @("src/", "scripts/", "vendor/", "cameraunlock-core", "README.md", "THIRD-PARTY-NOTICES.md")
+    } catch {
+        if (-not $Force) {
+            Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "No user-facing changes to release. Re-run with -Force for a maintenance release." -ForegroundColor Yellow
+            exit 1
+        }
+        Write-Host "No user-facing commits since last tag - writing maintenance entry (-Force)." -ForegroundColor Yellow
+        Add-MaintenanceChangelogEntry -Path $changelogPath -NewVersion $Version
+    }
+}
+
+# Step 4: Update version
 Write-Host "Updating version to $Version..." -ForegroundColor Cyan
 Set-CsprojVersion -CsprojPath $csprojPath -Version $Version
 
@@ -134,7 +182,7 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 [System.IO.File]::WriteAllText($modManifestPath, ($modManifest | ConvertTo-Json -Depth 10), $utf8NoBom)
 Write-Host "  Updated version in launcher-manifest.json" -ForegroundColor Gray
 
-# Step 4: Build to verify the bump compiles
+# Step 5: Build to verify the bump compiles
 Write-Host "Building release..." -ForegroundColor Cyan
 Push-Location $projectDir
 try {
@@ -145,31 +193,6 @@ try {
     }
 } finally {
     Pop-Location
-}
-
-# Step 5: Generate CHANGELOG
-Write-Host "Generating CHANGELOG from commits..." -ForegroundColor Cyan
-$changelogPath = Join-Path $projectDir "CHANGELOG.md"
-$hasExistingTags = git tag -l 2>$null
-if (-not $hasExistingTags) {
-    $date = Get-Date -Format 'yyyy-MM-dd'
-    $firstEntry = "# Changelog`n`n## [$Version] - $date`n`nFirst release.`n"
-    Set-Content $changelogPath $firstEntry -NoNewline
-    Write-Host "  First release - wrote initial CHANGELOG entry" -ForegroundColor Gray
-} else {
-    try {
-        New-ChangelogFromCommits `
-            -ChangelogPath $changelogPath `
-            -Version $Version `
-            -ArtifactPaths @("src/", "scripts/", "vendor/", "cameraunlock-core", "README.md", "THIRD-PARTY-NOTICES.md")
-    } catch {
-        Write-Host "  No usable commits in range, writing manual changelog entry" -ForegroundColor Yellow
-        $date = Get-Date -Format 'yyyy-MM-dd'
-        $entry = "## [$Version] - $date`n`nRelease $Version.`n"
-        $existing = if (Test-Path $changelogPath) { Get-Content $changelogPath -Raw } else { "# Changelog`n`n" }
-        $existing = $existing -replace '(# Changelog\s*)', "`$1`n$entry`n"
-        Set-Content $changelogPath $existing -NoNewline
-    }
 }
 
 # Step 6: Commit
