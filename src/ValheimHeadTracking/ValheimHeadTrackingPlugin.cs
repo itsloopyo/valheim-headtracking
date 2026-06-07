@@ -20,7 +20,7 @@ namespace ValheimHeadTracking
     {
         public const string PLUGIN_GUID = "com.cameraunlock.valheim.headtracking";
         public const string PLUGIN_NAME = "Valheim Head Tracking";
-        public const string PLUGIN_VERSION = "0.1.4";
+        public const string PLUGIN_VERSION = "0.1.5";
 
         internal static ManualLogSource Log;
 

@@ -1,33 +1,51 @@
 {
-  "schema_version": 2,
-  "mod_info": {
-    "name": "ValheimHeadTracking",
-    "version": "0.1.4",
-    "game_id": "valheim"
-  },
-  "strategy": "BepInEx5",
-  "delivery_mode": "manifest",
+    "schema_version":  2,
+    "mod_info":  {
+                     "name":  "ValheimHeadTracking",
+                     "version":  "0.1.5",
+                     "game_id":  "valheim"
+                 },
+    "strategy":  "BepInEx5",
+    "delivery_mode":  "manifest",
+    "loader":  {
+                   "archives":  [
+                                    {
+                                        "source":  "vendor/bepinex/BepInEx_win_x64.zip"
+                                    }
+                                ],
+                   "detect":  [
+                                  "BepInEx/core/BepInEx.dll",
+                                  "BepInEx/core/BepInEx.Core.dll"
+                              ],
+                   "seed":  [
+                                {
+                                    "target":  "BepInEx/config/BepInEx.cfg",
+                                    "content_b64":  "W0xvZ2dpbmcuQ29uc29sZV0NCkVuYWJsZWQgPSB0cnVlDQoNCltMb2dnaW5nLkRpc2tdDQpFbmFibGVkID0gdHJ1ZQ0K"
+                                }
+                            ]
+               },
+    "files":  [
+                  {
+                      "source":  "plugins/ValheimHeadTracking.dll",
+                      "target":  "BepInEx/plugins/ValheimHeadTracking/ValheimHeadTracking.dll"
+                  },
+                  {
+                      "source":  "plugins/CameraUnlock.Core.dll",
+                      "target":  "BepInEx/plugins/ValheimHeadTracking/CameraUnlock.Core.dll"
+                  },
+                  {
+                      "source":  "plugins/CameraUnlock.Core.Unity.dll",
+                      "target":  "BepInEx/plugins/ValheimHeadTracking/CameraUnlock.Core.Unity.dll"
+                  },
+                  {
+                      "source":  "plugins/CameraUnlock.Core.Unity.BepInEx.dll",
+                      "target":  "BepInEx/plugins/ValheimHeadTracking/CameraUnlock.Core.Unity.BepInEx.dll"
+                  }
+              ],
+    "runtime_requirements":  [
 
-  "loader": {
-    "archives": [
-      { "source": "vendor/bepinex/BepInEx_win_x64.zip" }
-    ],
-    "detect": [ "BepInEx/core/BepInEx.dll", "BepInEx/core/BepInEx.Core.dll" ],
-    "seed": [
-      {
-        "target": "BepInEx/config/BepInEx.cfg",
-        "content_b64": "W0xvZ2dpbmcuQ29uc29sZV0NCkVuYWJsZWQgPSB0cnVlDQoNCltMb2dnaW5nLkRpc2tdDQpFbmFibGVkID0gdHJ1ZQ0K"
-      }
-    ]
-  },
+                             ],
+    "dependencies":  [
 
-  "files": [
-    { "source": "plugins/ValheimHeadTracking.dll", "target": "BepInEx/plugins/ValheimHeadTracking/ValheimHeadTracking.dll" },
-    { "source": "plugins/CameraUnlock.Core.dll", "target": "BepInEx/plugins/ValheimHeadTracking/CameraUnlock.Core.dll" },
-    { "source": "plugins/CameraUnlock.Core.Unity.dll", "target": "BepInEx/plugins/ValheimHeadTracking/CameraUnlock.Core.Unity.dll" },
-    { "source": "plugins/CameraUnlock.Core.Unity.BepInEx.dll", "target": "BepInEx/plugins/ValheimHeadTracking/CameraUnlock.Core.Unity.BepInEx.dll" }
-  ],
-
-  "runtime_requirements": [],
-  "dependencies": []
+                     ]
 }
