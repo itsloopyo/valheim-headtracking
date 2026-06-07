@@ -38,6 +38,7 @@ $csprojPath = Join-Path $projectDir "src\ValheimHeadTracking\ValheimHeadTracking
 $pluginSourcePath = Join-Path $projectDir "src\ValheimHeadTracking\ValheimHeadTrackingPlugin.cs"
 $pixiTomlPath = Join-Path $projectDir "pixi.toml"
 $installCmdPath = Join-Path $projectDir "scripts\install.cmd"
+$modManifestPath = Join-Path $projectDir "launcher-manifest.json"
 
 Import-Module (Join-Path $projectDir "cameraunlock-core\powershell\ReleaseWorkflow.psm1") -Force
 
@@ -125,6 +126,14 @@ if ($updatedInstallText -eq $installText) {
     [System.Text.Encoding]::ASCII.GetBytes($updatedInstallText))
 Write-Host "  Updated MOD_VERSION in scripts/install.cmd" -ForegroundColor Gray
 
+# Keep the launcher manifest version in lockstep with the csproj. The packager
+# re-stamps it too, but committing it keeps the repo source of truth honest.
+$modManifest = Get-Content $modManifestPath -Raw | ConvertFrom-Json
+$modManifest.mod_info.version = $Version
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($modManifestPath, ($modManifest | ConvertTo-Json -Depth 10), $utf8NoBom)
+Write-Host "  Updated version in launcher-manifest.json" -ForegroundColor Gray
+
 # Step 4: Build to verify the bump compiles
 Write-Host "Building release..." -ForegroundColor Cyan
 Push-Location $projectDir
@@ -165,7 +174,7 @@ if (-not $hasExistingTags) {
 
 # Step 6: Commit
 Write-Host "Committing version change..." -ForegroundColor Cyan
-git add $csprojPath $pluginSourcePath $pixiTomlPath $installCmdPath $changelogPath
+git add $csprojPath $pluginSourcePath $pixiTomlPath $installCmdPath $modManifestPath $changelogPath
 git commit -m "Release v$Version"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: Commit failed." -ForegroundColor Red

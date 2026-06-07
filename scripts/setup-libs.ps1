@@ -1,87 +1,56 @@
-# Setup libs folder for ValheimHeadTracking
-# Copies required DLLs from Valheim installation
-$ErrorActionPreference = "Stop"
+#!/usr/bin/env pwsh
+# Populates src/ValheimHeadTracking/libs/ for a game-free build, from REPO
+# FILES ONLY - no Valheim install required - so `pixi run package` builds
+# identically locally and in CI:
+#   - BepInEx.dll / 0Harmony.dll : extracted from the vendored BepInEx zip
+#   - assembly_valheim.dll + UnityEngine.*.dll : committed Refasmer metadata-only
+#     reference assemblies (vendor/game-refs/). These carry the REAL public API
+#     signatures of the game DLLs (fields stay fields, etc.) with no IL bodies,
+#     so the mod compiles against shapes that match the real assemblies at
+#     runtime. Regenerate from a real install with `pixi run update-game-refs`.
 
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+
+$scriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptDir
-$libsDir = Join-Path $projectRoot "src\ValheimHeadTracking\libs"
+$libsPath    = Join-Path $projectRoot 'src\ValheimHeadTracking\libs'
+$vendorZip   = Join-Path $projectRoot 'vendor\bepinex\BepInEx_win_x64.zip'
+$gameRefs    = Join-Path $projectRoot 'vendor\game-refs'
 
-$bepinexDlls = @(
-    "0Harmony.dll",
-    "BepInEx.dll"
-)
+if (-not (Test-Path $vendorZip)) { throw "Vendored BepInEx not found at $vendorZip" }
+if (-not (Test-Path $gameRefs)) {
+    throw "Game reference assemblies not found at $gameRefs. Run 'pixi run update-game-refs' against a Valheim install."
+}
 
-$managedDlls = @(
-    "assembly_valheim.dll",
-    "UnityEngine.dll",
-    "UnityEngine.CoreModule.dll",
-    "UnityEngine.IMGUIModule.dll",
-    "UnityEngine.InputLegacyModule.dll",
-    "UnityEngine.PhysicsModule.dll",
-    "UnityEngine.TextRenderingModule.dll",
-    "UnityEngine.UI.dll",
-    "UnityEngine.UIModule.dll"
-)
+New-Item -ItemType Directory -Path $libsPath -Force | Out-Null
 
-# Idempotency guard: if every required DLL is already present, exit without
-# touching the filesystem. Lets `build` depend on this task without re-copying
-# every invocation, and lets contributors without Valheim installed build as
-# long as libs/ has been pre-populated.
-if (Test-Path $libsDir) {
-    $missing = @($bepinexDlls + $managedDlls) | Where-Object {
-        -not (Test-Path (Join-Path $libsDir $_))
+Write-Host "Populating libs/ from repo files (no game install required)..." -ForegroundColor Cyan
+
+# Clean slate - libs/ holds only generated build refs (gitignored), so a local
+# build reproduces CI's empty-libs start instead of masking it with stale DLLs.
+Get-ChildItem -Path $libsPath -Force | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+# BepInEx from the vendored zip.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$tempDir = Join-Path $env:TEMP ("valheim-bep-" + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+try {
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($vendorZip, $tempDir)
+    foreach ($dll in @('BepInEx.dll', '0Harmony.dll')) {
+        $src = Join-Path $tempDir "BepInEx\core\$dll"
+        if (-not (Test-Path $src)) { throw "$dll not found in vendor zip at BepInEx\core\" }
+        Copy-Item $src (Join-Path $libsPath $dll) -Force
+        Write-Host "  BepInEx: $dll" -ForegroundColor Gray
     }
-    if ($missing.Count -eq 0) {
-        Write-Host "libs/ already populated -- skipping setup."
-        exit 0
-    }
+} finally {
+    Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-# Get Valheim path from environment or use default Steam location
-$valheimPath = $env:VALHEIM_PATH
-if (-not $valheimPath) {
-    $valheimPath = "C:\Program Files (x86)\Steam\steamapps\common\Valheim"
+# Refasmer reference assemblies for the Unity + Valheim DLLs.
+Get-ChildItem -Path $gameRefs -Filter *.dll | ForEach-Object {
+    Copy-Item $_.FullName (Join-Path $libsPath $_.Name) -Force
+    Write-Host "  Ref: $($_.Name)" -ForegroundColor Gray
 }
 
-$managedPath = Join-Path $valheimPath "valheim_Data\Managed"
-$bepinexPath = Join-Path $valheimPath "BepInEx\core"
-
-if (-not (Test-Path $managedPath)) {
-    Write-Error "Valheim Managed folder not found at $managedPath"
-    Write-Error "Set VALHEIM_PATH environment variable to your Valheim installation"
-    exit 1
-}
-
-if (-not (Test-Path $bepinexPath)) {
-    Write-Error "BepInEx not found at $bepinexPath"
-    Write-Error "Make sure BepInEx is installed in your Valheim folder"
-    exit 1
-}
-
-if (-not (Test-Path $libsDir)) {
-    New-Item -ItemType Directory -Path $libsDir | Out-Null
-}
-
-Write-Host "Copying DLLs to $libsDir"
-
-foreach ($dll in $bepinexDlls) {
-    $source = Join-Path $bepinexPath $dll
-    if (Test-Path $source) {
-        Copy-Item $source $libsDir -Force
-        Write-Host "  Copied $dll (BepInEx)"
-    } else {
-        Write-Warning "  Not found: $source"
-    }
-}
-
-foreach ($dll in $managedDlls) {
-    $source = Join-Path $managedPath $dll
-    if (Test-Path $source) {
-        Copy-Item $source $libsDir -Force
-        Write-Host "  Copied $dll (Managed)"
-    } else {
-        Write-Warning "  Not found: $source"
-    }
-}
-
-Write-Host "Setup complete!"
+Write-Host "Build dependencies ready." -ForegroundColor Green

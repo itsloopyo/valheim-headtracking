@@ -15,6 +15,9 @@ build = { cmd = "dotnet build src/ValheimHeadTracking/ValheimHeadTracking.csproj
 # Bump vendored mod-loader copies to latest upstream within pinned range.
 # Manual; commit the result. CI does not run this.
 update-deps = "powershell -ExecutionPolicy Bypass -File scripts/update-deps.ps1"
+# Dev-only: regenerate vendor/game-refs/ (Refasmer metadata-only refs) from a
+# real Valheim install when the game updates. Commit the diff. CI never runs it.
+update-game-refs = "powershell -ExecutionPolicy Bypass -File scripts/update-game-refs.ps1"
 install = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 Release", depends-on = ["build"] }
 package = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1", depends-on = ["build"] }
 uninstall = "scripts\\uninstall.cmd"

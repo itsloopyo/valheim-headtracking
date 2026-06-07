@@ -24,208 +24,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Cache game libraries
-        id: cache-libs
-        uses: actions/cache@v4
-        with:
-          path: src/ValheimHeadTracking/libs
-          key: valheim-libs-v1
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.1
 
-      - name: Setup SteamCMD
-        if: steps.cache-libs.outputs.cache-hit != 'true'
-        uses: CyberAndrii/setup-steamcmd@v1
+      - name: Build and package
+        shell: pwsh
+        run: pixi run package
 
-      - name: Initialize SteamCMD
-        if: steps.cache-libs.outputs.cache-hit != 'true'
-        continue-on-error: true
-        run: steamcmd +quit
-
-      - name: Download Valheim Dedicated Server
-        if: steps.cache-libs.outputs.cache-hit != 'true'
+      - name: Stage installer contents for artifact
         shell: pwsh
         run: |
-          # steamcmd intermittently fails the first app_update with
-          # "Missing configuration" when the AppInfo cache hasn't populated yet.
-          # Force a cache refresh via app_info_update and retry on failure.
-          $maxAttempts = 4
-          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-            Write-Host "Downloading Valheim Dedicated Server (attempt $attempt/$maxAttempts)..." -ForegroundColor Cyan
-            steamcmd +force_install_dir "${{ github.workspace }}\valheim-server" +login anonymous +app_info_update 1 +app_update 896660 validate +quit
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "Download complete" -ForegroundColor Green
-              exit 0
-            }
-            Write-Host "::warning::steamcmd exited with $LASTEXITCODE on attempt $attempt"
-            if ($attempt -lt $maxAttempts) {
-              $delay = [math]::Min(60, [math]::Pow(2, $attempt) * 5)
-              Write-Host "Retrying in $delay seconds..."
-              Start-Sleep -Seconds $delay
-            }
-          }
-          Write-Host "::error::Failed to download Valheim Dedicated Server after $maxAttempts attempts"
-          exit 1
-
-      - name: Download BepInEx
-        if: steps.cache-libs.outputs.cache-hit != 'true'
-        shell: pwsh
-        run: |
-          Write-Host "Downloading BepInEx 5.4.23.4..." -ForegroundColor Cyan
-
-          $bepinexUrl = "https://github.com/BepInEx/BepInEx/releases/download/v5.4.23.4/BepInEx_win_x64_5.4.23.4.zip"
-          $expectedHash = "F881201B79DA03E513BF97CDF39607FFA7F9E0D31A519B1AEECA8EB60F8309E7"
-
-          Invoke-WebRequest -Uri $bepinexUrl -OutFile bepinex.zip
-
-          $actualHash = (Get-FileHash -Path bepinex.zip -Algorithm SHA256).Hash
-          if ($actualHash -ne $expectedHash) {
-            Write-Host "::error::BepInEx hash mismatch!"
-            Write-Host "::error::Expected: $expectedHash"
-            Write-Host "::error::Got: $actualHash"
+          $zip = Get-ChildItem release/*-installer.zip -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $zip) {
+            Write-Host "::error::No installer ZIP was produced by 'pixi run package'"
             exit 1
           }
+          $dest = "release/artifact-contents"
+          New-Item -ItemType Directory -Path $dest -Force | Out-Null
+          Expand-Archive -Path $zip.FullName -DestinationPath $dest -Force
+          Write-Host "Staged $($zip.Name)" -ForegroundColor Green
 
-          Write-Host "BepInEx download verified" -ForegroundColor Green
-
-          Expand-Archive -Path bepinex.zip -DestinationPath bepinex-temp
-          New-Item -ItemType Directory -Path "src/ValheimHeadTracking/libs" -Force | Out-Null
-          Copy-Item bepinex-temp/BepInEx/core/BepInEx.dll "src/ValheimHeadTracking/libs/"
-          Copy-Item bepinex-temp/BepInEx/core/0Harmony.dll "src/ValheimHeadTracking/libs/"
-
-          Remove-Item bepinex.zip
-          Remove-Item -Recurse bepinex-temp
-
-          Write-Host "BepInEx DLLs extracted" -ForegroundColor Green
-
-      - name: Copy game libraries
-        if: steps.cache-libs.outputs.cache-hit != 'true'
+      - name: Compute artifact name from ref
+        id: artifact
         shell: pwsh
         run: |
-          $managedPath = "${{ github.workspace }}\valheim-server\valheim_server_Data\Managed"
-          $libsDir = "src/ValheimHeadTracking/libs"
-
-          $dlls = @(
-            "assembly_valheim.dll",
-            "UnityEngine.dll",
-            "UnityEngine.CoreModule.dll",
-            "UnityEngine.IMGUIModule.dll",
-            "UnityEngine.InputLegacyModule.dll",
-            "UnityEngine.PhysicsModule.dll",
-            "UnityEngine.TextRenderingModule.dll",
-            "UnityEngine.UI.dll",
-            "UnityEngine.UIModule.dll"
-          )
-
-          foreach ($dll in $dlls) {
-            $source = Join-Path $managedPath $dll
-            if (Test-Path $source) {
-              Copy-Item $source "$libsDir/" -Force
-              Write-Host "  Copied $dll" -ForegroundColor Green
-            } else {
-              Write-Host "::error::Missing required DLL: $dll at $source"
-              exit 1
-            }
-          }
-
-          Write-Host "Game libraries copied" -ForegroundColor Green
-
-      - name: Restore NuGet packages
-        run: dotnet restore src/ValheimHeadTracking/ValheimHeadTracking.csproj
-
-      - name: Build Debug
-        shell: pwsh
-        run: |
-          Write-Host "Building debug configuration..." -ForegroundColor Cyan
-          dotnet build src/ValheimHeadTracking/ValheimHeadTracking.csproj --configuration Debug
-
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::Debug build failed"
-            exit 1
-          }
-
-          Write-Host "Debug build succeeded" -ForegroundColor Green
-
-      - name: Build Release
-        shell: pwsh
-        run: |
-          Write-Host "Building release configuration..." -ForegroundColor Cyan
-          dotnet build src/ValheimHeadTracking/ValheimHeadTracking.csproj --configuration Release
-
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::Release build failed"
-            exit 1
-          }
-
-          Write-Host "Release build succeeded" -ForegroundColor Green
-
-      - name: Verify build outputs
-        shell: pwsh
-        run: |
-          Write-Host "Verifying build outputs..." -ForegroundColor Cyan
-
-          $requiredFiles = @(
-            "src/ValheimHeadTracking/bin/Debug/net48/ValheimHeadTracking.dll",
-            "src/ValheimHeadTracking/bin/Release/net48/ValheimHeadTracking.dll"
-          )
-
-          $allExist = $true
-          foreach ($file in $requiredFiles) {
-            if (Test-Path $file) {
-              $size = (Get-Item $file).Length / 1KB
-              Write-Host "  $file ($([math]::Round($size, 2)) KB)" -ForegroundColor Green
-            } else {
-              Write-Host "  Missing: $file" -ForegroundColor Red
-              $allExist = $false
-            }
-          }
-
-          if (-not $allExist) {
-            Write-Host "::error::Some build outputs are missing"
-            exit 1
-          }
-
-          Write-Host "All build outputs verified" -ForegroundColor Green
-
-      - name: Package installer
-        shell: pwsh
-        run: |
-          Write-Host "Packaging installer ZIP..." -ForegroundColor Cyan
-          powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
-
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::Packaging failed"
-            exit 1
-          }
-
-          Write-Host "Package created" -ForegroundColor Green
-
-      - name: Stage installer contents for artifact upload
-        shell: pwsh
-        run: |
-          # GitHub's upload-artifact ALWAYS zips its input, so uploading the
-          # packaged installer zip would give users a zip-in-zip. Upload the
-          # EXTRACTED contents instead, which GitHub then zips for download -
-          # yielding a single-unzip experience that also hides the stale
-          # package-release version number that lives in the inner zip's
-          # filename.
-          $zip = Get-ChildItem release/*-installer.zip | Select-Object -First 1
-          if (-not $zip) { Write-Host "::error::No installer zip produced"; exit 1 }
-          $out = "release/artifact-contents"
-          if (Test-Path $out) { Remove-Item -Recurse -Force $out }
-          New-Item -ItemType Directory -Path $out -Force | Out-Null
-          Expand-Archive -Path $zip.FullName -DestinationPath $out -Force
-          Write-Host "Staged $($zip.Name) -> $out" -ForegroundColor Green
+          $branch = "${{ github.ref_name }}" -replace '[^A-Za-z0-9._-]', '-'
+          echo "name=ValheimHeadTracking-$branch" >> $env:GITHUB_OUTPUT
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ValheimHeadTracking-installer
+          name: ${{ steps.artifact.outputs.name }}
           path: release/artifact-contents/
           retention-days: 14
           if-no-files-found: error
