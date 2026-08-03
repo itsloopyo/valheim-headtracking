@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.0] - 2026-08-03
+
+### Fixed
+
+- show full control set in pixi install via shared -Controls
+
+### Other
+
+- Link Discord, Lopari and Headcam from the README
+
 ## [0.1.5] - 2026-06-07
 
 ### Added
