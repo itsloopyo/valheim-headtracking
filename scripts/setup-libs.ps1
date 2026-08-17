@@ -3,11 +3,11 @@
 # FILES ONLY - no Valheim install required - so `pixi run package` builds
 # identically locally and in CI:
 #   - BepInEx.dll / 0Harmony.dll : extracted from the vendored BepInEx zip
-#   - assembly_valheim.dll + UnityEngine.*.dll : committed Refasmer metadata-only
-#     reference assemblies (vendor/game-refs/). These carry the REAL public API
-#     signatures of the game DLLs (fields stay fields, etc.) with no IL bodies,
-#     so the mod compiles against shapes that match the real assemblies at
-#     runtime. Regenerate from a real install with `pixi run update-game-refs`.
+#   - UnityEngine*.dll           : compiled from the checked-in UnityStubs.cs
+#   - assembly_valheim.dll       : compiled from the checked-in ValheimStubs.cs
+#
+# The stub sources are hand-written signatures for the members this mod binds
+# against, so the build needs nothing beyond this repo.
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -16,12 +16,12 @@ $scriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptDir
 $libsPath    = Join-Path $projectRoot 'src\ValheimHeadTracking\libs'
 $vendorZip   = Join-Path $projectRoot 'vendor\bepinex\BepInEx_win_x64.zip'
-$gameRefs    = Join-Path $projectRoot 'vendor\game-refs'
+$unityStubs  = Join-Path $libsPath 'UnityStubs.cs'
+$gameStubs   = Join-Path $libsPath 'ValheimStubs.cs'
 
-if (-not (Test-Path $vendorZip)) { throw "Vendored BepInEx not found at $vendorZip" }
-if (-not (Test-Path $gameRefs)) {
-    throw "Game reference assemblies not found at $gameRefs. Run 'pixi run update-game-refs' against a Valheim install."
-}
+if (-not (Test-Path $vendorZip))  { throw "Vendored BepInEx not found at $vendorZip" }
+if (-not (Test-Path $unityStubs)) { throw "UnityStubs.cs not found at $libsPath" }
+if (-not (Test-Path $gameStubs))  { throw "ValheimStubs.cs not found at $libsPath" }
 
 New-Item -ItemType Directory -Path $libsPath -Force | Out-Null
 
@@ -29,7 +29,9 @@ Write-Host "Populating libs/ from repo files (no game install required)..." -For
 
 # Clean slate - libs/ holds only generated build refs (gitignored), so a local
 # build reproduces CI's empty-libs start instead of masking it with stale DLLs.
-Get-ChildItem -Path $libsPath -Force | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+Get-ChildItem -Path $libsPath -Force |
+    Where-Object { $_.Name -notin @('UnityStubs.cs', 'ValheimStubs.cs') } |
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
 # BepInEx from the vendored zip.
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -47,10 +49,57 @@ try {
     Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-# Refasmer reference assemblies for the Unity + Valheim DLLs.
-Get-ChildItem -Path $gameRefs -Filter *.dll | ForEach-Object {
-    Copy-Item $_.FullName (Join-Path $libsPath $_.Name) -Force
-    Write-Host "  Ref: $($_.Name)" -ForegroundColor Gray
+function Build-Stub {
+    param(
+        [string]$assemblyName,
+        [string]$compileItem,
+        [string[]]$references = @()
+    )
+
+    $refItems = ($references | ForEach-Object {
+        "    <Reference Include=`"$([System.IO.Path]::GetFileNameWithoutExtension($_))`"><HintPath>$_</HintPath><Private>false</Private></Reference>"
+    }) -join "`n"
+
+    $proj = @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>$assemblyName</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0169;CS0649;CS0067;CS0660;CS0661</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$compileItem" />
+$refItems
+  </ItemGroup>
+</Project>
+"@
+    $projPath = Join-Path $libsPath "Stub_$assemblyName.csproj"
+    $proj | Out-File -FilePath $projPath -Encoding utf8
+    dotnet build $projPath -c Release -o $libsPath --nologo -v q
+    if ($LASTEXITCODE -ne 0) { throw "Failed to build stub $assemblyName" }
+    Remove-Item $projPath -ErrorAction SilentlyContinue
+    Write-Host "  Stub: $assemblyName.dll" -ForegroundColor Gray
 }
+
+# Every stubbed Unity type lives in UnityStubs.cs and therefore in
+# UnityEngine.dll; the module assemblies exist only so references resolve.
+Build-Stub 'UnityEngine' 'UnityStubs.cs'
+
+# The game stubs bind against those Unity types, so they compile after it.
+Build-Stub 'assembly_valheim' 'ValheimStubs.cs' @('UnityEngine.dll')
+
+$emptySource = Join-Path $libsPath 'EmptyStub.cs'
+'// Empty stub assembly' | Out-File -FilePath $emptySource -Encoding utf8
+foreach ($m in @(
+    'UnityEngine.CoreModule', 'UnityEngine.IMGUIModule', 'UnityEngine.PhysicsModule',
+    'UnityEngine.TextRenderingModule', 'UnityEngine.InputLegacyModule',
+    'UnityEngine.UIModule', 'UnityEngine.UI'
+)) { Build-Stub $m 'EmptyStub.cs' }
+
+Remove-Item $emptySource -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $libsPath '*.deps.json') -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $libsPath '*.pdb')        -Force -ErrorAction SilentlyContinue
 
 Write-Host "Build dependencies ready." -ForegroundColor Green

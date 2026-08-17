@@ -42,3 +42,6 @@ NEXUS_MODS.md
 # OS
 .DS_Store
 Thumbs.db
+
+# Build references are generated from the stub sources in src/*/libs/*Stubs.cs.
+vendor/game-refs/
