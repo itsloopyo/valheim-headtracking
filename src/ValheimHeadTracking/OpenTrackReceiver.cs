@@ -19,7 +19,6 @@ namespace ValheimHeadTracking
         private const float PositionLimitX = 0.60f;
         private const float PositionLimitZ = 0.80f;
         private const float PositionLimitZBack = 0.60f;
-        private const float PositionSmoothing = 0.15f;
 
         private static CameraUnlock.Core.Protocol.OpenTrackReceiver _receiver;
         private static TrackingProcessor _processor;
@@ -57,7 +56,7 @@ namespace ValheimHeadTracking
             _receiver = new CameraUnlock.Core.Protocol.OpenTrackReceiver();
             _receiver.Log = msg => ValheimHeadTrackingPlugin.Log.LogInfo(msg);
 
-            _processor = new TrackingProcessor { SmoothingFactor = 0f };
+            _processor = new TrackingProcessor();
             _positionProcessor = new PositionProcessor();
             _session = new HeadTrackingSession(_receiver, _processor, _positionProcessor)
             {
@@ -79,6 +78,12 @@ namespace ValheimHeadTracking
         {
             if (_processor == null) return;
 
+            // Both smoothing values go to the processors as-is; the library selects
+            // between them from the connection flag the session refreshes each Update()
+            // off its own receiver. No floor is applied.
+            _processor.LocalSmoothing = HeadTrackingConfig.LocalSmoothing.Value;
+            _processor.RemoteSmoothing = HeadTrackingConfig.RemoteSmoothing.Value;
+
             // Configure sensitivity with inversion
             // Note: Pitch needs negation by default (OpenTrack up = Unity down)
             // Config.InvertPitch=false means "natural" = negate, so we invert the flag
@@ -97,7 +102,8 @@ namespace ValheimHeadTracking
                 HeadTrackingConfig.PositionLimitY.Value,
                 HeadTrackingConfig.PositionLimitYDown.Value,
                 PositionLimitZ, PositionLimitZBack,
-                PositionSmoothing,
+                HeadTrackingConfig.LocalSmoothing.Value,
+                HeadTrackingConfig.RemoteSmoothing.Value,
                 invertX: true, invertY: false, invertZ: true);
         }
 

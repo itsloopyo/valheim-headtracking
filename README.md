@@ -97,25 +97,38 @@ The tracking-mode cycle steps through **6DOF (rotation + position) -> 3DOF rotat
 
 The mod creates a config file at `Valheim\BepInEx\config\com.cameraunlock.valheim.headtracking.cfg` on first run. Edit it to customize:
 
+A comment has to sit on its own line. BepInEx splits each line at the first `=`
+and takes everything after it as the value, so a trailing `# note` becomes part
+of the value, the conversion fails, and the entry silently keeps its default -
+the only trace is a line in `BepInEx\LogOutput.log`. Put explanations above the
+key, never after it.
+
 ```ini
 [General]
-EnableOnStartup = true           # Start with tracking enabled
-WorldSpaceYaw = true             # true = horizon-locked yaw (default), false = camera-local
+# Start with tracking enabled
+EnableOnStartup = true
+# true = horizon-locked yaw (default), false = camera-local
+WorldSpaceYaw = true
 
 [Network]
-UdpPort = 4242                   # Must match OpenTrack output port
+# Must match OpenTrack output port
+UdpPort = 4242
 
 [Hotkeys]
 ToggleKey = End
 RecenterKey = Home
-PositionToggleKey = PageUp        # Cycles 6DOF -> 3DOF rotation only -> 3DOF position only
+# Cycles 6DOF -> 3DOF rotation only -> 3DOF position only
+PositionToggleKey = PageUp
 ReticleToggleKey = Insert
 YawModeKey = PageDown
 
 [Sensitivity]
-YawSensitivity = 1.0             # Horizontal rotation (0.1-3.0)
-PitchSensitivity = 1.0           # Vertical rotation (0.1-3.0)
-RollSensitivity = 1.0            # Head tilt (0.1-3.0)
+# Horizontal rotation (0.1-3.0)
+YawSensitivity = 1.0
+# Vertical rotation (0.1-3.0)
+PitchSensitivity = 1.0
+# Head tilt (0.1-3.0)
+RollSensitivity = 1.0
 
 [Inversion]
 InvertYaw = false
@@ -123,13 +136,28 @@ InvertPitch = false
 InvertRoll = false
 
 [Aim Decoupling]
-EnableAimDecoupling = true       # Separate aim from head movement
-ShowDecoupledCrosshair = true    # Move crosshair to the actual aim position
+# Separate aim from head movement
+EnableAimDecoupling = true
+# Move crosshair to the actual aim position
+ShowDecoupledCrosshair = true
 
 [Position]
-PositionLimitY = 0.60            # Max upward vertical offset in meters (0.0-1.5)
-PositionLimitYDown = 0.40        # Max downward vertical offset in meters (0.0-1.5)
+# Max upward vertical offset in meters (0.0-1.5)
+PositionLimitY = 0.60
+# Max downward vertical offset in meters (0.0-1.5)
+PositionLimitYDown = 0.40
+
+[Smoothing]
+# Smoothing when the tracker runs on this machine (0.0-1.0)
+LocalSmoothing = 0.0
+# Smoothing when the tracker is a remote network device (0.0-1.0)
+RemoteSmoothing = 0.15
 ```
+
+Smoothing covers both rotation and position. Which of the two values applies is
+decided per connection from the packet source address: a tracker running on this
+PC uses `LocalSmoothing`, a phone or other network device uses `RemoteSmoothing`.
+Switching between them takes effect without restarting the game.
 
 Delete the file to reset all settings to defaults.
 
@@ -146,7 +174,11 @@ Delete the file to reset all settings to defaults.
 - Press **End** to make sure tracking is enabled, then **Home** to recenter.
 - Check your firewall isn't blocking UDP port 4242.
 
+**A config edit had no effect:**
+- Make sure nothing follows the value on the line. A trailing `# comment` is read as part of the value, the entry falls back to its default, and the game gives no sign of it. `BepInEx\LogOutput.log` records the failed conversion.
+
 **Jittery / unstable tracking:**
+- Raise `RemoteSmoothing` (phone/network tracker) or `LocalSmoothing` (tracker on this PC) toward `0.3`-`0.5`, with nothing after the value on the line.
 - Increase filtering in OpenTrack (Accela filter recommended).
 - Reduce sensitivity in the mod config.
 - Improve lighting for webcam-based tracking.

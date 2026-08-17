@@ -53,7 +53,8 @@ namespace ValheimHeadTracking
             if (_camera == null) return;
 
             // Session.Update keeps the pipeline fed every frame (auto-recenter, smoothing,
-            // hold-on-loss). False only when no tracker data has ever arrived.
+            // hold-on-loss, and the local/remote connection flag that selects which
+            // smoothing value applies). False only when no tracker data has ever arrived.
             HeadTrackingSession session = OpenTrackReceiver.Session;
             if (session == null || !session.Update(Time.deltaTime))
             {

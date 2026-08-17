@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- add `LocalSmoothing` (default 0.0) and `RemoteSmoothing` (default 0.15) config keys, replacing the hardcoded rotation smoothing and the separate 0.15 position smoothing constant; the value is selected per connection from the packet source address and covers both rotation and position
+- remove the hidden 0.15 baseline smoothing floor, so a tracker running on this PC now gets zero-latency tracking by default
+
 ## [0.2.0] - 2026-08-03
 
 ### Fixed

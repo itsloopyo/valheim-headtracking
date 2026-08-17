@@ -18,6 +18,8 @@ namespace ValheimHeadTracking
 
         private ConfigEntry<float> _positionLimitY;
         private ConfigEntry<float> _positionLimitYDown;
+        private ConfigEntry<float> _localSmoothing;
+        private ConfigEntry<float> _remoteSmoothing;
         private ConfigEntry<bool> _worldSpaceYaw;
         private ConfigEntry<KeyCode> _yawModeKey;
 
@@ -72,6 +74,25 @@ namespace ValheimHeadTracking
                     "Maximum downward vertical displacement in meters",
                     new AcceptableValueRange<float>(0f, 1.5f)));
 
+            // Smoothing covers both rotation and position. The value used is selected
+            // per connection from the packet source address, so a local tracker and a
+            // phone on WiFi each get their own setting without a restart.
+            _localSmoothing = config.Bind(
+                "Smoothing",
+                "LocalSmoothing",
+                CameraUnlock.Core.Math.SmoothingUtils.DefaultLocalSmoothing,
+                new ConfigDescription(
+                    "Smoothing applied when the tracker runs on this machine (loopback). 0 = no smoothing, 1 = heavy.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+
+            _remoteSmoothing = config.Bind(
+                "Smoothing",
+                "RemoteSmoothing",
+                CameraUnlock.Core.Math.SmoothingUtils.DefaultRemoteSmoothing,
+                new ConfigDescription(
+                    "Smoothing applied when the tracker is a remote device on the network. 0 = no smoothing, 1 = heavy.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+
             _worldSpaceYaw = config.Bind(
                 "General",
                 "WorldSpaceYaw",
@@ -94,6 +115,8 @@ namespace ValheimHeadTracking
             // cache, so changes must be pushed into the tracking pipeline.
             _positionLimitY.SettingChanged += (_, __) => OpenTrackReceiver.UpdateProcessorSettings();
             _positionLimitYDown.SettingChanged += (_, __) => OpenTrackReceiver.UpdateProcessorSettings();
+            _localSmoothing.SettingChanged += (_, __) => OpenTrackReceiver.UpdateProcessorSettings();
+            _remoteSmoothing.SettingChanged += (_, __) => OpenTrackReceiver.UpdateProcessorSettings();
             _worldSpaceYaw.SettingChanged += (_, __) => RefreshCache();
         }
 
@@ -138,6 +161,8 @@ namespace ValheimHeadTracking
         // --- Valheim-specific entries ---
         public static ConfigEntry<float> PositionLimitY => Instance._positionLimitY;
         public static ConfigEntry<float> PositionLimitYDown => Instance._positionLimitYDown;
+        public static ConfigEntry<float> LocalSmoothing => Instance._localSmoothing;
+        public static ConfigEntry<float> RemoteSmoothing => Instance._remoteSmoothing;
         public static ConfigEntry<bool> WorldSpaceYaw => Instance._worldSpaceYaw;
         public static ConfigEntry<KeyCode> YawModeKey => Instance._yawModeKey;
 
