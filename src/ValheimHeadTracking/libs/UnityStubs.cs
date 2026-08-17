@@ -1,4 +1,7 @@
-// Unity stubs for CI builds - contains all types needed by CameraUnlock.Core.Unity
+// Unity stubs for CI builds - the engine types needed by CameraUnlock.Core.Unity
+// and this mod. Every type here is forwarded by the shipped UnityEngine.dll
+// facade, so declaring them all in one stub assembly still resolves at runtime.
+// uGUI is not: those stubs live in UnityUIStubs.cs and must stay there.
 namespace UnityEngine {
     public class Object {
         public static void Destroy(Object obj) { }
@@ -576,29 +579,4 @@ namespace UnityEngine.Events {
     public delegate void UnityAction();
     public delegate void UnityAction<T0>(T0 arg0);
     public delegate void UnityAction<T0, T1>(T0 arg0, T1 arg1);
-}
-namespace UnityEngine.UI {
-    public abstract class Graphic : UnityEngine.Behaviour {
-        public UnityEngine.Color color { get; set; }
-        public bool raycastTarget { get; set; }
-        public UnityEngine.RectTransform rectTransform { get; }
-        public UnityEngine.Canvas canvas { get; }
-        public virtual void SetNativeSize() { }
-    }
-    public class Image : Graphic {
-        public UnityEngine.Sprite sprite { get; set; }
-        public Type type { get; set; }
-        public bool fillCenter { get; set; }
-        public enum Type { Simple, Sliced, Tiled, Filled }
-    }
-    public class RawImage : Graphic {
-        public UnityEngine.Texture texture { get; set; }
-        public UnityEngine.Rect uvRect { get; set; }
-    }
-    public class Text : Graphic {
-        public string text { get; set; }
-        public UnityEngine.Font font { get; set; }
-        public int fontSize { get; set; }
-        public UnityEngine.TextAnchor alignment { get; set; }
-    }
 }
