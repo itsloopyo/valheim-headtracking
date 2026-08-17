@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1] - 2026-08-17
+
+### Added
+
+- follow core's split of SmoothingFactor into a per-connection pair
+
 ## [Unreleased]
 
 ### Changed
