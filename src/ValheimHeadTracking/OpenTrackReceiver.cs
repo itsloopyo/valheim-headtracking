@@ -104,7 +104,7 @@ namespace ValheimHeadTracking
                 PositionLimitZ, PositionLimitZBack,
                 HeadTrackingConfig.LocalSmoothing.Value,
                 HeadTrackingConfig.RemoteSmoothing.Value,
-                invertX: true, invertY: false, invertZ: true);
+                invertX: true, invertY: false, invertZ: false);
         }
 
         /// <summary>
