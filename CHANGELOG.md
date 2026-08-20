@@ -16,8 +16,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- one latched `First tracker packet received on port N` line in `BepInEx\LogOutput.log`. Until now the log could not distinguish "the tracker never reached the mod" from "tracking was gated by the game state", which cost a round trip on every "no head tracking" report
+
 ### Changed
 
+- the mod keeps no centre of its own. The recenter hotkey (`Home` / `Ctrl+Shift+T`) is gone, along with the in-game "Recentered" message. Every tracker app centres itself, so a mod-side centre sat in series with the tracker's and the two drifted apart. Centre in your tracker app instead: OpenTrack's Center bind, or the CENTER button in a phone tracker app
 - add `LocalSmoothing` (default 0.0) and `RemoteSmoothing` (default 0.15) config keys, replacing the hardcoded rotation smoothing and the separate 0.15 position smoothing constant; the value is selected per connection from the packet source address and covers both rotation and position
 - remove the hidden 0.15 baseline smoothing floor, so a tracker running on this PC now gets zero-latency tracking by default
 

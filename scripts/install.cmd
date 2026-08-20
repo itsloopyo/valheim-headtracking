@@ -16,7 +16,7 @@ set "BEPINEX_ARCH=x64"
 set "BEPINEX_VENDOR_ZIP_NAME="
 set "BEPINEX_SUBFOLDER="
 set "PLUGIN_SUBFOLDER=ValheimHeadTracking"
-set "MOD_CONTROLS=Controls:&echo   Home      - Recenter head tracking&echo   End       - Toggle head tracking on/off&echo   Page Up   - Toggle position tracking on/off&echo   Page Down - Toggle yaw mode (world-locked / camera-local)&echo   Insert    - Toggle aim reticle on/off"
+set "MOD_CONTROLS=Controls:&echo   End       - Toggle head tracking on/off&echo   Page Up   - Toggle position tracking on/off&echo   Page Down - Toggle yaw mode (world-locked / camera-local)&echo   Insert    - Toggle aim reticle on/off"
 :: --- END CONFIG BLOCK ---
 
 set "WRAPPER_DIR=%~dp0"

@@ -7,8 +7,7 @@ namespace ValheimHeadTracking
     /// <summary>
     /// Static wrapper that owns the shared UDP receiver and HeadTrackingSession
     /// (receiver -> interpolators -> processors) for the lifetime of the plugin.
-    /// The session provides pose interpolation, hold-on-tracking-loss, and
-    /// stabilized auto-recenter on tracker connection.
+    /// The session provides pose interpolation and hold-on-tracking-loss.
     /// </summary>
     public static class OpenTrackReceiver
     {
@@ -120,16 +119,6 @@ namespace ValheimHeadTracking
             _positionProcessor = null;
             _session = null;
             ValheimHeadTrackingPlugin.Log.LogInfo("OpenTrackReceiver stopped");
-        }
-
-        /// <summary>
-        /// Sets the current head pose and position as the new center.
-        /// Caller MUST check IsReceiving before calling this method.
-        /// </summary>
-        public static void Recenter()
-        {
-            _session.Recenter();
-            ValheimHeadTrackingPlugin.Log.LogInfo("Head tracking recentered");
         }
     }
 }

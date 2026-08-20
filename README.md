@@ -57,7 +57,7 @@ If you own a VR headset, it makes an excellent tracker for flatscreen play.
 2. In OpenTrack, set the input to **SteamVR**.
 3. Set output to **UDP over network** (`127.0.0.1:4242`).
 4. Start tracking before launching the game.
-5. Recenter via OpenTrack's hotkey, then press **Home** in-game to recenter the mod.
+5. Centre your view with OpenTrack's Center hotkey. The mod applies whatever the tracker sends, so the tracker owns the centre.
 
 ### Webcam Setup
 
@@ -67,7 +67,7 @@ No special hardware needed - OpenTrack's built-in **neuralnet tracker** uses any
 2. Select your webcam in the tracker settings.
 3. Set output to **UDP over network** (`127.0.0.1:4242`).
 4. Start tracking before launching the game.
-5. Recenter in OpenTrack via its hotkey, and press **Home** in-game to recenter the mod as needed.
+5. Centre your view with OpenTrack's Center hotkey whenever the neutral pose drifts.
 
 ### Phone App Setup
 
@@ -87,7 +87,6 @@ The tracking-mode cycle steps through **6DOF (rotation + position) -> 3DOF rotat
 
 | Action                     | Nav-cluster | Chord           |
 |----------------------------|-------------|-----------------|
-| Recenter view              | `Home`      | `Ctrl+Shift+T`  |
 | Toggle head tracking       | `End`       | `Ctrl+Shift+Y`  |
 | Cycle tracking mode        | `Page Up`   | `Ctrl+Shift+G`  |
 | Toggle yaw mode            | `Page Down` | `Ctrl+Shift+H`  |
@@ -116,7 +115,6 @@ UdpPort = 4242
 
 [Hotkeys]
 ToggleKey = End
-RecenterKey = Home
 # Cycles 6DOF -> 3DOF rotation only -> 3DOF position only
 PositionToggleKey = PageUp
 ReticleToggleKey = Insert
@@ -171,8 +169,11 @@ Delete the file to reset all settings to defaults.
 **No tracking response:**
 - Confirm OpenTrack (or your phone app) is running and actively sending data.
 - Verify UDP output is set to `127.0.0.1:4242` (or your PC's LAN IP if tracking from a phone).
-- Press **End** to make sure tracking is enabled, then **Home** to recenter.
+- Press **End** to make sure tracking is enabled.
 - Check your firewall isn't blocking UDP port 4242.
+
+**View sits off-centre:**
+- Centre it in your tracker app: OpenTrack's Center bind, or the CENTER button in a phone tracker app. The mod keeps no centre of its own, it applies the pose the tracker sends.
 
 **A config edit had no effect:**
 - Make sure nothing follows the value on the line. A trailing `# comment` is read as part of the value, the entry falls back to its default, and the game gives no sign of it. `BepInEx\LogOutput.log` records the failed conversion.

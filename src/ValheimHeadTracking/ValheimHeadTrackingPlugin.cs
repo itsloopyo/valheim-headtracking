@@ -12,7 +12,7 @@ namespace ValheimHeadTracking
     /// - OpenTrackReceiver: Receives UDP packets from OpenTrack (background thread)
     /// - CameraController: Watches for GameCamera and attaches CameraTrackingHook
     /// - CameraTrackingHook: Applies head tracking via view matrix in OnPreCull
-    /// - HotkeyHandler: Handles toggle (End) and recenter (Home) hotkeys
+    /// - HotkeyHandler: Handles the toggle (End) and mode hotkeys
     /// - CrosshairOffsetHook: Moves crosshair to show actual aim position
     /// </summary>
     [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
@@ -30,6 +30,11 @@ namespace ValheimHeadTracking
         public static ValheimHeadTrackingPlugin Instance { get; private set; }
 
         private CameraController _cameraController;
+
+        // Latched: the log must be able to answer "did any tracker packet ever reach
+        // the mod", separately from whether tracking was applied. Without it a wrong
+        // port, a firewall block and a gameplay gate all look identical in the log.
+        private bool _loggedFirstPacket;
 
         private void Awake()
         {
@@ -61,6 +66,14 @@ namespace ValheimHeadTracking
             Log.LogInfo("Crosshair offset hook initialized");
 
             Log.LogInfo($"{PLUGIN_NAME} loaded successfully!");
+        }
+
+        private void Update()
+        {
+            if (_loggedFirstPacket || !OpenTrackReceiver.IsReceiving) return;
+
+            _loggedFirstPacket = true;
+            Log.LogInfo($"First tracker packet received on port {HeadTrackingConfig.UdpPort.Value}");
         }
 
         private void OnDestroy()

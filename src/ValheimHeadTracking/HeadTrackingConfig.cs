@@ -141,7 +141,6 @@ namespace ValheimHeadTracking
         public static new ConfigEntry<bool> InvertYaw => Base.InvertYaw;
         public static new ConfigEntry<bool> InvertPitch => Base.InvertPitch;
         public static new ConfigEntry<bool> InvertRoll => Base.InvertRoll;
-        public static new ConfigEntry<KeyCode> RecenterKey => Base.RecenterKey;
         public static new ConfigEntry<KeyCode> ToggleKey => Base.ToggleKey;
         public static new ConfigEntry<KeyCode> PositionToggleKey => Base.PositionToggleKey;
         public static new ConfigEntry<KeyCode> ReticleToggleKey => Base.ReticleToggleKey;

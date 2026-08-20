@@ -2,34 +2,27 @@ using System;
 using BepInEx.Configuration;
 using CameraUnlock.Core.State;
 using CameraUnlock.Core.Tracking;
-using CameraUnlock.Core.Unity.BepInEx.Input;
 using CameraUnlock.Core.Unity.Extensions;
 using UnityEngine;
 
 namespace ValheimHeadTracking
 {
     /// <summary>
-    /// Handles hotkey input for toggling head tracking and recentering.
-    /// Uses the shared BepInExHotkeyHandler for recenter/toggle, and polls additional
-    /// nav-cluster keys (cycle mode, reticle, yaw-mode) plus the shared Ctrl+Shift+letter
-    /// chord bindings. Hotkeys are blocked during text input (chat, console, sign editing).
+    /// Handles hotkey input for head tracking.
+    /// Polls the nav-cluster keys (toggle, cycle mode, reticle, yaw-mode) plus the
+    /// shared Ctrl+Shift+letter chord bindings. Hotkeys are blocked during text
+    /// input (chat, console, sign editing).
     /// </summary>
     public class HotkeyHandler : MonoBehaviour
     {
-        private BepInExHotkeyHandler _handler;
-
+        private NavKeyBinding _toggleBinding;
         private NavKeyBinding _cycleModeBinding;
         private NavKeyBinding _reticleBinding;
         private NavKeyBinding _yawModeBinding;
 
         private void Start()
         {
-            _handler = gameObject.AddComponent<BepInExHotkeyHandler>();
-            _handler.Initialize(HeadTrackingConfig.RecenterKey, HeadTrackingConfig.ToggleKey);
-            _handler.IsInputBlocked = IsTextInputActive;
-            _handler.OnRecenter += HandleRecenter;
-            _handler.OnToggle += HandleToggle;
-
+            _toggleBinding = new NavKeyBinding(HeadTrackingConfig.ToggleKey, () => HandleToggle(TrackingState.Toggle()));
             _cycleModeBinding = new NavKeyBinding(HeadTrackingConfig.PositionToggleKey, CycleTrackingMode);
             _reticleBinding = new NavKeyBinding(HeadTrackingConfig.ReticleToggleKey, ToggleReticle);
             _yawModeBinding = new NavKeyBinding(HeadTrackingConfig.YawModeKey, ToggleYawMode);
@@ -39,14 +32,14 @@ namespace ValheimHeadTracking
         {
             if (IsTextInputActive()) return;
 
-            // Chord bindings: Ctrl+Shift+<letter> from the shared T/Y/G/H/U cluster,
+            // Chord bindings: Ctrl+Shift+<letter> from the shared Y/G/H/U cluster,
             // so keyboards without a nav cluster still work.
-            if (ChordHotkeys.IsPressed(ChordHotkeys.RecenterLetter)) HandleRecenter();
             if (ChordHotkeys.IsPressed(ChordHotkeys.ToggleLetter)) HandleToggle(TrackingState.Toggle());
             if (ChordHotkeys.IsPressed(ChordHotkeys.PositionLetter)) CycleTrackingMode();
             if (ChordHotkeys.IsPressed(ChordHotkeys.FourthToggleLetter)) ToggleYawMode();
             if (ChordHotkeys.IsPressed(ChordHotkeys.FifthToggleLetter)) ToggleReticle();
 
+            _toggleBinding.Poll();
             _cycleModeBinding.Poll();
             _reticleBinding.Poll();
             _yawModeBinding.Poll();
@@ -88,23 +81,6 @@ namespace ValheimHeadTracking
         private static bool IsTextInputActive()
         {
             return TextInput.IsVisible() || Console.IsVisible();
-        }
-
-        /// <summary>
-        /// Handles the recenter hotkey press.
-        /// Sets the current head position as the center reference point.
-        /// </summary>
-        private void HandleRecenter()
-        {
-            if (!OpenTrackReceiver.IsReceiving)
-            {
-                ShowMessage("Head Tracking: No signal from OpenTrack");
-                ValheimHeadTrackingPlugin.Log.LogWarning("Recenter failed: No OpenTrack signal");
-                return;
-            }
-
-            OpenTrackReceiver.Recenter();
-            ShowMessage("Head Tracking: Recentered");
         }
 
         /// <summary>
