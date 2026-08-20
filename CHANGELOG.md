@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0] - 2026-08-20
+
+### Added
+
+- drop the mod-side centre and log the first tracker packet
+
+### Fixed
+
+- give the forward lean its own travel budget again
+
 ## [0.2.2] - 2026-08-18
 
 ### Fixed
