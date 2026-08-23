@@ -1,6 +1,9 @@
 # Build output
 bin/
 obj/
+# Compiled DLLs belong in a release ZIP, never in the tree. The one tracked
+# binary besides the vendored loader is the README clip under assets/.
+prebuilt/
 
 # Game reference DLLs (copied at build time)
 src/*/libs/*.dll

@@ -32,6 +32,19 @@ $scriptsDir = Join-Path $projectDir "scripts"
 $vendorBepDir = Join-Path $projectDir "vendor/bepinex"
 $coreRoot = Join-Path $projectDir "cameraunlock-core"
 
+function Copy-CoreLicense {
+    param([Parameter(Mandatory)][string]$StagingDir)
+
+    $coreLicense = Join-Path $coreRoot "LICENSE"
+    if (-not (Test-Path $coreLicense)) {
+        throw "cameraunlock-core LICENSE not found: $coreLicense. The submodule is not checked out; run 'git submodule update --init --recursive'."
+    }
+    $licenseDir = Join-Path $StagingDir "licenses"
+    New-Item -ItemType Directory -Path $licenseDir -Force | Out-Null
+    Copy-Item $coreLicense -Destination (Join-Path $licenseDir "cameraunlock-core-LICENSE.txt") -Force
+    Write-Host "  licenses/cameraunlock-core-LICENSE.txt" -ForegroundColor Green
+}
+
 # Create release directory
 if (-not (Test-Path $releaseDir)) {
     New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
@@ -154,15 +167,23 @@ if (Get-Command Copy-SharedBundle -ErrorAction SilentlyContinue) {
     }
 }
 
-# Copy documentation
+# Copy documentation. LICENSE and THIRD-PARTY-NOTICES.md are licence
+# obligations, not niceties: a missing one is a compliance failure, so this
+# throws rather than skipping the copy and producing a green build.
 $docFiles = @("README.md", "LICENSE", "CHANGELOG.md", "THIRD-PARTY-NOTICES.md")
 foreach ($doc in $docFiles) {
     $docPath = Join-Path $projectDir $doc
-    if (Test-Path $docPath) {
-        Copy-Item $docPath -Destination $ghStagingDir -Force
-        Write-Host "  $doc" -ForegroundColor Green
+    if (-not (Test-Path $docPath)) {
+        throw "Required document not found: $doc. Every published ZIP is a binary distribution and must carry it."
     }
+    Copy-Item $docPath -Destination $ghStagingDir -Force
+    Write-Host "  $doc" -ForegroundColor Green
 }
+
+# cameraunlock-core builds the three CameraUnlock.Core.* DLLs staged above. Its
+# LICENSE names a different copyright holder from this repo's, so MIT wants its
+# notice travelling with those binaries in every ZIP that carries them.
+Copy-CoreLicense -StagingDir $ghStagingDir
 
 $ghZipName = "ValheimHeadTracking-v$version-installer.zip"
 $ghZipPath = Join-Path $releaseDir $ghZipName
@@ -207,6 +228,18 @@ if (Test-Path $nexusZipPath) { Remove-Item $nexusZipPath -Force }
 Write-Host ""
 Write-Host "Creating Nexus ZIP..." -ForegroundColor Cyan
 
+# The Nexus ZIP is a binary distribution too: the licences of everything
+# compiled into or bundled with the payload require their notices to travel
+# with it, so LICENSE and THIRD-PARTY-NOTICES.md ship at its root.
+foreach ($noticeDoc in @('LICENSE', 'THIRD-PARTY-NOTICES.md', 'README.md')) {
+    $noticeSrc = Join-Path $projectDir $noticeDoc
+    if (-not (Test-Path $noticeSrc)) {
+        throw "Required notice file not found: $noticeDoc. Every published ZIP is a binary distribution and must carry it."
+    }
+    Copy-Item $noticeSrc -Destination $nexusStagingDir -Force
+    Write-Host "  $noticeDoc" -ForegroundColor Green
+}
+Copy-CoreLicense -StagingDir $nexusStagingDir
 Push-Location $nexusStagingDir
 try {
     Compress-Archive -Path ".\*" -DestinationPath $nexusZipPath -Force
