@@ -3,12 +3,13 @@
 # FILES ONLY - no Valheim install required - so `pixi run package` builds
 # identically locally and in CI:
 #   - BepInEx.dll / 0Harmony.dll : extracted from the vendored BepInEx zip
-#   - UnityEngine*.dll           : compiled from the checked-in UnityStubs.cs
-#   - UnityEngine.UI.dll         : compiled from the checked-in UnityUIStubs.cs
+#   - UnityEngine*.dll           : compiled by the shared stub builder in
+#                                  cameraunlock-core/csharp/stubs
 #   - assembly_valheim.dll       : compiled from the checked-in ValheimStubs.cs
 #
-# The stub sources are hand-written signatures for the members this mod binds
-# against, so the build needs nothing beyond this repo.
+# ValheimStubs.cs is hand-written signatures for the Valheim members this mod
+# binds against. It is the only stub source that still lives here; the Unity
+# ones moved to core so the fleet stops carrying fifteen drifting copies.
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -17,14 +18,12 @@ $scriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptDir
 $libsPath    = Join-Path $projectRoot 'src\ValheimHeadTracking\libs'
 $vendorZip   = Join-Path $projectRoot 'vendor\bepinex\BepInEx_win_x64.zip'
-$unityStubs  = Join-Path $libsPath 'UnityStubs.cs'
-$uiStubs     = Join-Path $libsPath 'UnityUIStubs.cs'
 $gameStubs   = Join-Path $libsPath 'ValheimStubs.cs'
+$stubBuilder = Join-Path $projectRoot 'cameraunlock-core\csharp\stubs\build-unity-stubs.ps1'
 
-if (-not (Test-Path $vendorZip))  { throw "Vendored BepInEx not found at $vendorZip" }
-if (-not (Test-Path $unityStubs)) { throw "UnityStubs.cs not found at $libsPath" }
-if (-not (Test-Path $uiStubs))    { throw "UnityUIStubs.cs not found at $libsPath" }
-if (-not (Test-Path $gameStubs))  { throw "ValheimStubs.cs not found at $libsPath" }
+if (-not (Test-Path $vendorZip))   { throw "Vendored BepInEx not found at $vendorZip" }
+if (-not (Test-Path $gameStubs))   { throw "ValheimStubs.cs not found at $libsPath" }
+if (-not (Test-Path $stubBuilder)) { throw "Shared stub builder not found at $stubBuilder - is the cameraunlock-core submodule checked out?" }
 
 New-Item -ItemType Directory -Path $libsPath -Force | Out-Null
 
@@ -33,7 +32,7 @@ Write-Host "Populating libs/ from repo files (no game install required)..." -For
 # Clean slate - libs/ holds only generated build refs (gitignored), so a local
 # build reproduces CI's empty-libs start instead of masking it with stale DLLs.
 Get-ChildItem -Path $libsPath -Force |
-    Where-Object { $_.Name -notin @('UnityStubs.cs', 'UnityUIStubs.cs', 'ValheimStubs.cs') } |
+    Where-Object { $_.Name -ne 'ValheimStubs.cs' } |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
 # BepInEx from the vendored zip.
@@ -52,63 +51,8 @@ try {
     Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-function Build-Stub {
-    param(
-        [string]$assemblyName,
-        [string]$compileItem,
-        [string[]]$references = @()
-    )
-
-    $refItems = ($references | ForEach-Object {
-        "    <Reference Include=`"$([System.IO.Path]::GetFileNameWithoutExtension($_))`"><HintPath>$_</HintPath><Private>false</Private></Reference>"
-    }) -join "`n"
-
-    $proj = @"
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <AssemblyName>$assemblyName</AssemblyName>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <NoWarn>CS0169;CS0649;CS0067;CS0660;CS0661</NoWarn>
-  </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="$compileItem" />
-$refItems
-  </ItemGroup>
-</Project>
-"@
-    $projPath = Join-Path $libsPath "Stub_$assemblyName.csproj"
-    $proj | Out-File -FilePath $projPath -Encoding utf8
-    dotnet build $projPath -c Release -o $libsPath --nologo -v q
-    if ($LASTEXITCODE -ne 0) { throw "Failed to build stub $assemblyName" }
-    Remove-Item $projPath -ErrorAction SilentlyContinue
-    Write-Host "  Stub: $assemblyName.dll" -ForegroundColor Gray
-}
-
-# Every stubbed engine type lives in UnityStubs.cs and therefore in
-# UnityEngine.dll; the module assemblies exist only so references resolve. That
-# works because the shipped UnityEngine.dll type-forwards every module type.
-Build-Stub 'UnityEngine' 'UnityStubs.cs'
-
-# uGUI ships as its own assembly with no forwarder from UnityEngine.dll, so its
-# stubs have to be compiled into UnityEngine.UI.dll or the emitted typerefs
-# point at an assembly that does not declare them.
-Build-Stub 'UnityEngine.UI' 'UnityUIStubs.cs' @('UnityEngine.dll')
-
-# The game stubs bind against both, so they compile after them.
-Build-Stub 'assembly_valheim' 'ValheimStubs.cs' @('UnityEngine.dll', 'UnityEngine.UI.dll')
-
-$emptySource = Join-Path $libsPath 'EmptyStub.cs'
-'// Empty stub assembly' | Out-File -FilePath $emptySource -Encoding utf8
-foreach ($m in @(
-    'UnityEngine.CoreModule', 'UnityEngine.IMGUIModule', 'UnityEngine.PhysicsModule',
-    'UnityEngine.TextRenderingModule', 'UnityEngine.InputLegacyModule',
-    'UnityEngine.UIModule'
-)) { Build-Stub $m 'EmptyStub.cs' }
-
-Remove-Item $emptySource -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $libsPath '*.deps.json') -Force -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $libsPath '*.pdb')        -Force -ErrorAction SilentlyContinue
+& $stubBuilder -OutputPath $libsPath -TargetFramework net48 `
+    -ExtraAssembly "assembly_valheim=$gameStubs"
+if ($LASTEXITCODE -ne 0) { throw "Shared Unity stub build failed" }
 
 Write-Host "Build dependencies ready." -ForegroundColor Green

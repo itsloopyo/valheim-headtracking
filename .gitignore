@@ -46,5 +46,6 @@ NEXUS_MODS.md
 .DS_Store
 Thumbs.db
 
-# Build references are generated from the stub sources in src/*/libs/*Stubs.cs.
+# Unity build references are compiled from the shared stub sources in
+# cameraunlock-core/csharp/stubs; assembly_valheim from src/*/libs/ValheimStubs.cs.
 vendor/game-refs/
