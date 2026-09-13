@@ -8,6 +8,7 @@ An unofficial head tracking mod for Valheim that moves the camera with your head
 
 - **Decoupled look and aim** - head tracking moves the camera; aim stays on your mouse.
 - **6DOF positional tracking** - lean, peek, and duck with head position in addition to yaw / pitch / roll.
+- **Works with any OpenTrack compatible tracker** - free options available for PC, iOS and Android
 - **Cycle tracking modes** - one key cycles between full 6DOF, 3DOF rotation only, and 3DOF position only.
 
 ## Requirements
@@ -17,6 +18,13 @@ An unofficial head tracking mod for Valheim that moves the camera with your head
 - Windows 10/11 (64-bit)
 
 ## Installation
+
+### Lopari
+
+Download [Lopari](https://lopari.app), choose **Valheim**, and click
+**Play with head tracking**.
+
+### Standalone Installer
 
 1. Download the latest installer ZIP from the [Releases page](https://github.com/itsloopyo/valheim-headtracking/releases).
 2. Extract the ZIP anywhere.
