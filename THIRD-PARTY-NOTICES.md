@@ -22,7 +22,7 @@ Valheim.
 | HarmonyX | 2.9.0 | MIT | Inside the BepInEx archive, as `BepInEx/core/0Harmony.dll` |
 | Mono.Cecil | 0.10.4 | MIT | Inside the BepInEx archive, as `BepInEx/core/Mono.Cecil*.dll` |
 | MonoMod | 22.1.29.1 | MIT | Inside the BepInEx archive, as `BepInEx/core/MonoMod.*.dll` |
-| cameraunlock-core | `2eded2c129ae256564dab23652bc6732eb47d8a9` | MIT | Three DLLs beside the mod DLL, in both release ZIPs |
+| cameraunlock-core | `3f3a821aa00d5b87ecde7c4af77585ff2fc71ff5` | MIT | Three DLLs beside the mod DLL, in both release ZIPs |
 | OpenTrack | n/a | ISC | Not bundled; UDP protocol interoperability only |
 
 ---
@@ -670,7 +670,7 @@ the packaging scripts also ship the licence file itself as
 covers.
 
 - Upstream: https://github.com/itsloopyo/cameraunlock-core
-- Pinned commit: `2eded2c129ae256564dab23652bc6732eb47d8a9`
+- Pinned commit: `3f3a821aa00d5b87ecde7c4af77585ff2fc71ff5`
 
 ```
 MIT License
