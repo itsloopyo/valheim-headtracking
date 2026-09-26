@@ -4,6 +4,12 @@
 
 An unofficial head tracking mod for Valheim that moves the camera with your head while your mouse or controller keeps aiming, driven by OpenTrack over UDP, with no VR headset required.
 
+> **Settings have moved.** This version keeps its settings in `BepInEx\config\CameraUnlock.ini`.
+> The first time it starts it reads your settings from the old
+> `BepInEx\config\com.cameraunlock.valheim.headtracking.cfg` into the new file, and leaves
+> the old file as it was. BepInEx's ConfigurationManager no longer lists the settings: edit
+> `CameraUnlock.ini` with any text editor. [Configuration](#configuration) has the details.
+
 ## Features
 
 - **Decoupled look and aim** - head tracking moves the camera; aim stays on your mouse.
@@ -112,7 +118,7 @@ view sits off to one side, centre it in the tracker.
 
 ## Controls
 
-Two equivalent binding sets - use whichever your keyboard has. The chord letters sit in the middle of the keyboard so they work on laptops without a nav cluster.
+Two equivalent binding sets - use whichever your keyboard has. The chord letters sit in the middle of the keyboard so they work on laptops without a nav cluster. These are the default keys: `ToggleKey`, `CycleTrackingModeKey` and `YawModeKey` in `CameraUnlock.ini` list the keys for each action, chords included (see [Configuration](#configuration)).
 
 The tracking-mode cycle steps through **6DOF (rotation + position) -> 3DOF rotation only -> 3DOF position only -> 6DOF**. Use the master toggle (`End` / `Ctrl+Shift+Y`) to turn tracking off entirely.
 
@@ -121,74 +127,117 @@ The tracking-mode cycle steps through **6DOF (rotation + position) -> 3DOF rotat
 | Toggle head tracking       | `End`       | `Ctrl+Shift+Y`  |
 | Cycle tracking mode        | `Page Up`   | `Ctrl+Shift+G`  |
 | Toggle yaw mode            | `Page Down` | `Ctrl+Shift+H`  |
-| Toggle aim reticle         | `Insert`    | `Ctrl+Shift+U`  |
+
+The tracking mode and the yaw mode you pick are saved to `CameraUnlock.ini`, so the next start begins with them. The master toggle changes the current session only: each start has head tracking on or off as `EnableOnStartup` says.
+
+The game's crosshair, and the name of whatever you are looking at, move to where your aim points while head tracking turns the view. There is no setting that turns this off.
 
 ## Configuration
 
-The mod creates a config file at `Valheim\BepInEx\config\com.cameraunlock.valheim.headtracking.cfg` on first run. Edit it to customize:
+<!-- cameraunlock:config -->
+The mod reads its settings from `BepInEx\config\CameraUnlock.ini` in the game folder, and creates the file when it starts and finds none. Edit it with any text editor.
 
-A comment has to sit on its own line. BepInEx splits each line at the first `=`
-and takes everything after it as the value, so a trailing `# note` becomes part
-of the value, the conversion fails, and the entry silently keeps its default -
-the only trace is a line in `BepInEx\LogOutput.log`. Put explanations above the
-key, never after it.
+A setting set to `default` takes its value from `Defaults.ini`, which every head tracking mod that keeps its settings in `CameraUnlock.ini` reads. Head tracking mods that keep their settings in another file do not read it, and neither do earlier versions of this mod. Writing a value in place of `default` changes that setting for this game only. When the mod saves a setting that a hotkey changed in game, it writes the new value in place of `default`, so that setting no longer follows `Defaults.ini` in this game until you set it to `default` again.
+
+`Defaults.ini` is `%AppData%\CameraUnlock\Defaults.ini` on Windows; `$XDG_CONFIG_HOME/CameraUnlock/Defaults.ini` on Linux, or `~/.config/CameraUnlock/Defaults.ini` where `XDG_CONFIG_HOME` is not set, under Wine and Proton too; and `~/Library/Application Support/CameraUnlock/Defaults.ini` on macOS. The mod's log, where it writes one, names the file it read.
+
+When the mod starts and finds no `Defaults.ini`, it creates one holding the built-in values, unless Windows runs the game as a packaged app, or the game runs on Linux or macOS without Wine or Proton. The mod never changes `Defaults.ini` after that. Edit it with any text editor.
+
+Earlier versions of the mod kept these settings in `com.cameraunlock.valheim.headtracking.cfg`, in the same folder. The first time this version starts and finds no `CameraUnlock.ini`, it reads your settings from `com.cameraunlock.valheim.headtracking.cfg` and writes them into `CameraUnlock.ini`. It never changes `com.cameraunlock.valheim.headtracking.cfg`, and does not read it again while `CameraUnlock.ini` exists.
+
+A setting that the defaults below set to `default` is written as `default` when the value imported for it equals its default at that start, which is the value `Defaults.ini` gives it, or the built-in value where `Defaults.ini` gives none. It then follows `Defaults.ini`. Every other setting is written with the value imported for it. `RotationEnabled` and `PositionEnabled` are one setting here, the tracking mode, so both are written as `default` or neither is.
+
+Comments, and keys the mod never read, are not carried over. Nor are these, where your old file had them:
+
+- Reticle settings, and a key that toggled the reticle.
+- A sensitivity, scale, deadzone, response curve or axis inversion you changed from its default. Set these in your tracker instead.
+- The setting for a feature that earlier versions shipped switched off while it was untested. It now follows the mod's default.
+
+An older version of the mod reads `com.cameraunlock.valheim.headtracking.cfg` and never reads `CameraUnlock.ini`, so a setting you change after updating is not in `com.cameraunlock.valheim.headtracking.cfg`.
+
+Deleting only `CameraUnlock.ini` makes the next start read `com.cameraunlock.valheim.headtracking.cfg` again. To go back to the defaults, replace everything in `CameraUnlock.ini` with the defaults below. Every setting they set to `default` then follows `Defaults.ini`.
+
+On Linux and macOS without Wine or Proton, this version reads its settings and saves none: it creates no `CameraUnlock.ini`, reads your settings from `com.cameraunlock.valheim.headtracking.cfg` again at every start while there is no `CameraUnlock.ini`, and a change made in game lasts until the game closes.
+
+BepInEx's ConfigurationManager no longer lists these settings.
+
+The built-in value of each setting set to `default` below:
+
+- `UdpPort=4242`
+- `EnableOnStartup=true`
+- `WorldSpaceYaw=true`
+- `RotationEnabled=true`
+- `LocalSmoothing=0.0`
+- `RemoteSmoothing=0.15`
+- `PositionEnabled=true`
+- `PositionLimitY=0.2`
+- `PositionLimitYDown=0.2`
+- `ToggleKey=End, Ctrl+Shift+Y`
+- `CycleTrackingModeKey=PageUp, Ctrl+Shift+G`
+- `YawModeKey=PageDown, Ctrl+Shift+H`
+
+With every setting at its default, the file reads:
 
 ```ini
-[General]
-# Start with tracking enabled
-EnableOnStartup = true
-# true = horizon-locked yaw (default), false = camera-local
-WorldSpaceYaw = true
+; Valheim head tracking settings.
+; Comments start with ; and go on their own line. Text after a value is part of the value.
+; Hotkeys are key names such as End, PageUp or Ctrl+Shift+Y. Separate several with commas; leave empty for none.
+; A setting set to default takes its value from Defaults.ini, which every head tracking mod
+; that keeps its settings in CameraUnlock.ini reads: %AppData%\CameraUnlock\Defaults.ini on
+; Windows, $XDG_CONFIG_HOME/CameraUnlock/Defaults.ini (normally ~/.config/CameraUnlock) on
+; Linux, under Wine and Proton too, and ~/Library/Application Support/CameraUnlock/Defaults.ini
+; on macOS. The log names the file it read. Write a value instead of default to change that
+; setting for this game only.
+
+[CameraUnlock]
+; Written by the mod. Leave this section in place.
+ConfigFormat=1
 
 [Network]
-# Must match OpenTrack output port
-UdpPort = 4242
+; UDP port the mod receives tracker data on (OpenTrack protocol).
+UdpPort=default
 
-[Hotkeys]
-ToggleKey = End
-# Cycles 6DOF -> 3DOF rotation only -> 3DOF position only
-PositionToggleKey = PageUp
-ReticleToggleKey = Insert
-YawModeKey = PageDown
-
-[Sensitivity]
-# Horizontal rotation (0.1-3.0)
-YawSensitivity = 1.0
-# Vertical rotation (0.1-3.0)
-PitchSensitivity = 1.0
-# Head tilt (0.1-3.0)
-RollSensitivity = 1.0
-
-[Inversion]
-InvertYaw = false
-InvertPitch = false
-InvertRoll = false
-
-[Aim Decoupling]
-# Separate aim from head movement
-EnableAimDecoupling = true
-# Move crosshair to the actual aim position
-ShowDecoupledCrosshair = true
-
-[Position]
-# Max upward vertical offset in meters (0.0-1.5)
-PositionLimitY = 0.60
-# Max downward vertical offset in meters (0.0-1.5)
-PositionLimitYDown = 0.40
+[General]
+; true: head tracking is on when the game starts. ToggleKey turns it on and off.
+EnableOnStartup=default
+; true: yaw turns around the world's up axis. false: around the camera's own up axis.
+WorldSpaceYaw=default
+; true: turning your head turns the view.
+; Tracking mode at startup, with PositionEnabled. The mode hotkey changes both.
+RotationEnabled=default
 
 [Smoothing]
-# Smoothing when the tracker runs on this machine (0.0-1.0)
-LocalSmoothing = 0.0
-# Smoothing when the tracker is a remote network device (0.0-1.0)
-RemoteSmoothing = 0.15
+; Smoothing when the tracker runs on this PC. 0 is the least, 1 the most.
+LocalSmoothing=default
+; Smoothing when the tracker is another device on the network, such as a phone.
+; 0 is the least, 1 the most.
+RemoteSmoothing=default
+
+[Position]
+; true: moving your head moves the view.
+; Tracking mode at startup, with RotationEnabled. The mode hotkey changes both.
+PositionEnabled=default
+; How far, in metres, raising your head can move the view.
+PositionLimitY=default
+; How far, in metres, lowering your head can move the view.
+PositionLimitYDown=default
+
+[Hotkeys]
+; Turns head tracking on and off.
+ToggleKey=default
+; Changes the tracking mode: rotation and position, rotation only, position only.
+CycleTrackingModeKey=default
+; Switches yaw between the world's up axis and the camera's own (WorldSpaceYaw).
+YawModeKey=default
 ```
+<!-- /cameraunlock:config -->
 
 Smoothing covers both rotation and position. Which of the two values applies is
 decided per connection from the packet source address: a tracker running on this
 PC uses `LocalSmoothing`, a phone or other network device uses `RemoteSmoothing`.
-Switching between them takes effect without restarting the game.
 
-Delete the file to reset all settings to defaults.
+The mod reads `CameraUnlock.ini` when the game starts, so restart the game after
+editing it.
 
 ## Troubleshooting
 
@@ -207,29 +256,28 @@ Delete the file to reset all settings to defaults.
 - Centre it in your tracker app: OpenTrack's Center bind, or the CENTER button in a phone tracker app. The mod keeps no centre of its own, it applies the pose the tracker sends.
 
 **A config edit had no effect:**
-- Make sure nothing follows the value on the line. A trailing `# comment` is read as part of the value, the entry falls back to its default, and the game gives no sign of it. `BepInEx\LogOutput.log` records the failed conversion.
+- Restart the game: the mod reads `CameraUnlock.ini` when the game starts.
+- Make sure nothing follows the value on the line: text after a value is part of the value. `BepInEx\LogOutput.log` names each line the mod could not read and the value it used instead.
 
 **Jittery / unstable tracking:**
-- Raise `RemoteSmoothing` (phone/network tracker) or `LocalSmoothing` (tracker on this PC) toward `0.3`-`0.5`, with nothing after the value on the line.
+- Raise `RemoteSmoothing` (phone/network tracker) or `LocalSmoothing` (tracker on this PC) in `CameraUnlock.ini` toward `0.3`-`0.5`, with nothing after the value on the line.
 - Increase filtering in OpenTrack (Accela filter recommended).
-- Reduce sensitivity in the mod config.
 - Improve lighting for webcam-based tracking.
 - On WiFi phone tracking, some jitter is expected - the mod's built-in smoothing helps but cannot fully compensate for heavy packet loss.
 
 **Wrong rotation axis:**
-- Flip `InvertYaw`, `InvertPitch`, or `InvertRoll` in the config file.
-- Or adjust curves directly in OpenTrack.
+- Invert that axis in OpenTrack's output mapping. This mod has no invert or sensitivity settings; the axis corrections it needs are applied internally and are not configurable.
 
 **Yaw feels wrong when looking up or down at extreme angles:**
 - Try toggling between world-locked and camera-local yaw with `Page Down` (or `Ctrl+Shift+H`). World-locked (default) is horizon-stable; camera-local follows the camera's current up-axis.
 
 ## Updating
 
-Download the new release and run `install.cmd` again. Your config is preserved.
+Download the new release and run `install.cmd` again. Your `CameraUnlock.ini` is kept.
 
 ## Uninstalling
 
-Run `uninstall.cmd` from the release folder. This removes the mod DLLs. The mod loader (BepInEx) is only removed if the installer put it there. To force-remove BepInEx:
+Run `uninstall.cmd` from the release folder. This removes the mod DLLs and leaves `BepInEx\config\CameraUnlock.ini` and the old `.cfg` in place. The mod loader (BepInEx) is only removed if the installer put it there. To force-remove BepInEx:
 
 ```
 uninstall.cmd /force

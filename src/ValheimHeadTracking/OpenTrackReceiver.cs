@@ -64,6 +64,10 @@ namespace ValheimHeadTracking
             };
             UpdateProcessorSettings();
 
+            ValheimConfig config = HeadTrackingConfig.Current;
+            // The table reads a pair that names no mode as its default, so the pair always names one.
+            _session.Mode = TrackingModeChannels.Decode(config.RotationEnabled, config.PositionEnabled).Value;
+
             if (_receiver.Start(port))
             {
                 ValheimHeadTrackingPlugin.Log.LogInfo($"OpenTrackReceiver started on 0.0.0.0:{port}");
@@ -82,23 +86,20 @@ namespace ValheimHeadTracking
             _processor.LocalSmoothing = config.LocalSmoothing;
             _processor.RemoteSmoothing = config.RemoteSmoothing;
 
-            // Configure sensitivity with inversion
-            // Note: Pitch needs negation by default (OpenTrack up = Unity down)
-            // Config.InvertPitch=false means "natural" = negate, so we invert the flag
+            // The pitch negation here and the lateral one below are the axis conversion every
+            // published build applied, with every rotation multiplier at 1: OpenTrack's up is
+            // Unity's down. None of it is a setting.
             _processor.Sensitivity = new SensitivitySettings(
-                config.YawSensitivity,
-                config.PitchSensitivity,
-                config.RollSensitivity,
-                config.InvertYaw,
-                !config.InvertPitch,  // Inverted: default needs negation
-                config.InvertRoll
-            );
+                1.0f, 1.0f, 1.0f,
+                invertYaw: false,
+                invertPitch: true,
+                invertRoll: false);
 
             _positionProcessor.Settings = new PositionSettings(
                 PositionSensitivity, PositionSensitivity, PositionSensitivity,
                 PositionLimitX,
-                config.PositionLimitY,
-                config.PositionLimitYDown,
+                config.Position.LimitY,
+                config.Position.LimitYDown,
                 PositionLimitZ, PositionLimitZBack,
                 config.LocalSmoothing,
                 config.RemoteSmoothing,

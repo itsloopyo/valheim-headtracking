@@ -104,7 +104,6 @@ namespace ValheimHeadTracking
         /// <summary>
         /// Returns true if aim decoupling is currently active.
         /// Decoupling is active when:
-        /// - Feature is enabled in config
         /// - Head tracking is enabled
         /// - A non-zero tracking offset is being applied (including the held pose during
         ///   tracking loss - the hook zeroes its rotation when it stops applying tracking)
@@ -112,11 +111,6 @@ namespace ValheimHeadTracking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsDecoupled()
         {
-            if (!HeadTrackingConfig.Current.EnableAimDecoupling)
-            {
-                return false;
-            }
-
             if (!TrackingState.IsEnabled)
             {
                 return false;

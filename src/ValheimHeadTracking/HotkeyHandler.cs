@@ -1,77 +1,76 @@
-using System;
+using System.Collections.Generic;
+using CameraUnlock.Core.Input;
 using CameraUnlock.Core.State;
 using CameraUnlock.Core.Tracking;
 using CameraUnlock.Core.Unity.Extensions;
 using UnityEngine;
+using ValheimHeadTracking.Config;
 
 namespace ValheimHeadTracking
 {
     /// <summary>
-    /// Handles hotkey input for head tracking.
-    /// Polls the nav-cluster keys (toggle, cycle mode, reticle, yaw-mode) plus the
-    /// shared Ctrl+Shift+letter chord bindings. Hotkeys are blocked during text
+    /// Fires the mod's hotkey actions from the key lists in CameraUnlock.ini. Every binding in a
+    /// list is an ordinary item, the Ctrl+Shift chords included. Hotkeys are blocked during text
     /// input (chat, console, sign editing).
     /// </summary>
     public class HotkeyHandler : MonoBehaviour
     {
-        private NavKeyBinding _toggleBinding;
-        private NavKeyBinding _cycleModeBinding;
-        private NavKeyBinding _reticleBinding;
-        private NavKeyBinding _yawModeBinding;
+        private KeyBinding[] _toggle;
+        private KeyBinding[] _cycleTrackingMode;
+        private KeyBinding[] _yawMode;
 
         private void Start()
         {
-            var config = HeadTrackingConfig.Current;
-            _toggleBinding = new NavKeyBinding(config.ToggleKey, () => HandleToggle(TrackingState.Toggle()));
-            _cycleModeBinding = new NavKeyBinding(config.PositionToggleKey, CycleTrackingMode);
-            _reticleBinding = new NavKeyBinding(config.ReticleToggleKey, ToggleReticle);
-            _yawModeBinding = new NavKeyBinding(config.YawModeKey, ToggleYawMode);
+            ValheimConfig config = HeadTrackingConfig.Current;
+            _toggle = Parse("ToggleKey", config.ToggleKeyName);
+            _cycleTrackingMode = Parse("CycleTrackingModeKey", config.CycleTrackingModeKeyName);
+            _yawMode = Parse("YawModeKey", config.YawModeKeyName);
         }
 
         private void Update()
         {
+            if (MessageHud.instance != null)
+            {
+                // A centre message replaces the one before it, so the config's messages go up as one.
+                string pending = HeadTrackingConfig.TakePendingMessages();
+                if (pending != null) ShowMessage(pending);
+            }
+
+            // Every binding fires on a key's down-edge, so a frame with none cannot trigger one.
+            if (!Input.anyKeyDown) return;
             if (IsTextInputActive()) return;
 
-            // Chord bindings: Ctrl+Shift+<letter> from the shared Y/G/H/U cluster,
-            // so keyboards without a nav cluster still work.
-            if (ChordHotkeys.IsPressed(ChordHotkeys.ToggleLetter)) HandleToggle(TrackingState.Toggle());
-            if (ChordHotkeys.IsPressed(ChordHotkeys.PositionLetter)) CycleTrackingMode();
-            if (ChordHotkeys.IsPressed(ChordHotkeys.FourthToggleLetter)) ToggleYawMode();
-            if (ChordHotkeys.IsPressed(ChordHotkeys.FifthToggleLetter)) ToggleReticle();
-
-            _toggleBinding.Poll();
-            _cycleModeBinding.Poll();
-            _reticleBinding.Poll();
-            _yawModeBinding.Poll();
+            if (KeyBindingInput.IsTriggered(_toggle)) HandleToggle(TrackingState.Toggle());
+            if (KeyBindingInput.IsTriggered(_cycleTrackingMode)) CycleTrackingMode();
+            if (KeyBindingInput.IsTriggered(_yawMode)) ToggleYawMode();
         }
 
-        private void CycleTrackingMode()
+        private static void CycleTrackingMode()
         {
-            HeadTrackingSession session = OpenTrackReceiver.Session;
-            if (session == null) return;
-
-            TrackingMode mode = session.CycleMode();
+            TrackingMode mode = OpenTrackReceiver.Session.CycleMode();
             string desc = mode.Description();
             ShowMessage($"Tracking: {desc}");
             ValheimHeadTrackingPlugin.Log.LogInfo($"Tracking mode: {desc}");
+
+            bool rotation;
+            bool position;
+            TrackingModeChannels.Encode(mode, out rotation, out position);
+            HeadTrackingConfig.Save(c =>
+            {
+                c.RotationEnabled = rotation;
+                c.PositionEnabled = position;
+            });
         }
 
-        private void ToggleReticle()
+        private static void ToggleYawMode()
         {
-            bool newValue = !HeadTrackingConfig.Current.ShowDecoupledCrosshair;
-            HeadTrackingConfig.SetShowDecoupledCrosshair(newValue);
-            string stateText = newValue ? "ON" : "OFF";
-            ShowMessage($"Aim Reticle: {stateText}");
-            ValheimHeadTrackingPlugin.Log.LogInfo($"Aim reticle toggled: {stateText}");
-        }
-
-        private void ToggleYawMode()
-        {
-            bool newValue = !HeadTrackingConfig.Current.WorldSpaceYaw;
-            HeadTrackingConfig.SetWorldSpaceYaw(newValue);
-            string stateText = newValue ? "WORLD-LOCKED" : "CAMERA-LOCAL";
+            bool worldSpaceYaw = !HeadTrackingConfig.Current.WorldSpaceYaw;
+            HeadTrackingConfig.Current.WorldSpaceYaw = worldSpaceYaw;
+            string stateText = worldSpaceYaw ? "WORLD-LOCKED" : "CAMERA-LOCAL";
             ShowMessage($"Yaw Mode: {stateText}");
             ValheimHeadTrackingPlugin.Log.LogInfo($"Yaw mode toggled: {stateText}");
+
+            HeadTrackingConfig.Save(c => c.WorldSpaceYaw = worldSpaceYaw);
         }
 
         /// <summary>
@@ -84,9 +83,9 @@ namespace ValheimHeadTracking
         }
 
         /// <summary>
-        /// Handles the toggle hotkey press - shows a message with the new state.
+        /// The master on/off. It changes this session only and never writes the file.
         /// </summary>
-        private void HandleToggle(bool newState)
+        private static void HandleToggle(bool newState)
         {
             string stateText = newState ? "ON" : "OFF";
             ShowMessage($"Head Tracking: {stateText}");
@@ -109,32 +108,23 @@ namespace ValheimHeadTracking
             }
         }
 
-        /// <summary>
-        /// Encapsulates the poll-and-fire-on-edge pattern for a single nav-cluster key.
-        /// </summary>
-        private sealed class NavKeyBinding
+        // The table's hotkey codec has read every list the file holds, so a list that does not
+        // parse reaches here only from a legacy import the owner deferred: a .cfg key code Unity
+        // names no key for, which the import writes as the number. The items that parse, the
+        // chord among them, are bound and the rest are named in the log.
+        private static KeyBinding[] Parse(string key, string text)
         {
-            private readonly Action _onPressed;
-            private readonly KeyCode _key;
-            private bool _wasPressed;
+            KeyBinding[] bindings;
+            string error;
+            if (KeyBindings.TryParse(text, out bindings, out error)) return bindings;
 
-            public NavKeyBinding(KeyCode key, Action onPressed)
+            var kept = new List<KeyBinding>();
+            foreach (string item in text.Split(','))
             {
-                _onPressed = onPressed;
-                _key = key;
+                if (KeyBindings.TryParse(item, out bindings, out error)) kept.AddRange(bindings);
+                else ValheimHeadTrackingPlugin.Log.LogWarning("[Hotkeys] " + key + ": " + error + ", so it is not bound this session");
             }
-
-            public void Poll()
-            {
-                if (_key == KeyCode.None) return;
-
-                bool isPressed = Input.GetKey(_key);
-                if (isPressed && !_wasPressed)
-                {
-                    _onPressed();
-                }
-                _wasPressed = isPressed;
-            }
+            return kept.ToArray();
         }
     }
 }

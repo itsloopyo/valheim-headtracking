@@ -85,7 +85,7 @@ namespace ValheimHeadTracking
                 return;
             }
 
-            bool isDecoupled = AimState.IsDecoupled() && HeadTrackingConfig.Current.ShowDecoupledCrosshair;
+            bool isDecoupled = AimState.IsDecoupled();
 
             if (isDecoupled)
             {

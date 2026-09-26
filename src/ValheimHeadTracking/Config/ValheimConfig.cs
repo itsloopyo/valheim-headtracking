@@ -1,35 +1,34 @@
-using UnityEngine;
+using CameraUnlock.Core.Config;
 
 namespace ValheimHeadTracking.Config
 {
-    /// <summary>The settings the plugin runs on.</summary>
-    public sealed class ValheimConfig
+    /// <summary>
+    /// Everything the mod reads from BepInEx\config\CameraUnlock.ini. Unity-free, so the test
+    /// project compiles it and holds the committed file to it.
+    /// </summary>
+    public sealed class ValheimConfig : HeadTrackingConfigData
     {
-        public int UdpPort { get; set; }
-        public bool EnableOnStartup { get; set; }
+        /// <summary>The game's name as data/games.json spells it.</summary>
+        public const string DisplayName = "Valheim";
 
-        public float YawSensitivity { get; set; }
-        public float PitchSensitivity { get; set; }
-        public float RollSensitivity { get; set; }
-
-        public bool InvertYaw { get; set; }
-        public bool InvertPitch { get; set; }
-        public bool InvertRoll { get; set; }
-
-        public KeyCode ToggleKey { get; set; }
-        public KeyCode PositionToggleKey { get; set; }
-        public KeyCode ReticleToggleKey { get; set; }
-
-        public bool EnableAimDecoupling { get; set; }
-        public bool ShowDecoupledCrosshair { get; set; }
-
-        public float PositionLimitY { get; set; }
-        public float PositionLimitYDown { get; set; }
-
-        public float LocalSmoothing { get; set; }
-        public float RemoteSmoothing { get; set; }
-
-        public bool WorldSpaceYaw { get; set; }
-        public KeyCode YawModeKey { get; set; }
+        public static ConfigTable<ValheimConfig> Table()
+        {
+            return HeadTrackingConfigTable.Create<ValheimConfig>(
+                    ConfigConcepts.UdpPort,
+                    ConfigConcepts.EnableOnStartup,
+                    ConfigConcepts.WorldSpaceYaw,
+                    ConfigConcepts.RotationEnabled,
+                    ConfigConcepts.LocalSmoothing,
+                    ConfigConcepts.RemoteSmoothing,
+                    ConfigConcepts.PositionEnabled,
+                    ConfigConcepts.PositionLimitY,
+                    ConfigConcepts.PositionLimitYDown,
+                    ConfigConcepts.ToggleKey,
+                    ConfigConcepts.CycleTrackingModeKey,
+                    ConfigConcepts.YawModeKey)
+                .Select(ConfigConcepts.WorldSpaceYaw).Writable()
+                .Select(ConfigConcepts.RotationEnabled).Writable()
+                .Select(ConfigConcepts.PositionEnabled).Writable();
+        }
     }
 }

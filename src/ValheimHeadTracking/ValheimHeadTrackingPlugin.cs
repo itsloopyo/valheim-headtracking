@@ -13,7 +13,7 @@ namespace ValheimHeadTracking
     /// - CameraController: Watches for GameCamera and attaches CameraTrackingHook
     /// - CameraTrackingHook: Applies head tracking via view matrix in OnPreCull
     /// - HotkeyHandler: Handles the toggle (End) and mode hotkeys
-    /// - CrosshairOffsetHook: Moves crosshair to show actual aim position
+    /// - CrosshairOffsetHook: Moves the game's crosshair to show the actual aim position
     /// </summary>
     [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
     public class ValheimHeadTrackingPlugin : BaseUnityPlugin
@@ -42,9 +42,9 @@ namespace ValheimHeadTracking
             Log = Logger;
             Log.LogInfo($"{PLUGIN_NAME} v{PLUGIN_VERSION} loading...");
 
-            // Initialize configuration
-            HeadTrackingConfig.Initialize(Config);
-            Log.LogInfo("Configuration loaded");
+            // Settings are read from BepInEx\config\CameraUnlock.ini; Config is only the legacy
+            // .cfg the owner imports while that file is absent.
+            HeadTrackingConfig.Load(Config);
 
             // Initialize state management
             TrackingState.Initialize(HeadTrackingConfig.Current.EnableOnStartup);

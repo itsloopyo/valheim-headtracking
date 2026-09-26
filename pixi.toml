@@ -20,8 +20,13 @@ build = { cmd = "dotnet build src/ValheimHeadTracking/ValheimHeadTracking.csproj
 verify-refs = { cmd = "powershell -ExecutionPolicy Bypass -File cameraunlock-core/scripts/verify-assembly-refs.ps1 -GameId valheim -BuildDir src/ValheimHeadTracking/bin/Release", depends-on = ["build"] }
 # The config tests, among them the differential test in tests/config_differential, which holds
 # the legacy import to the v0.3.0 reader it replaces on every published build's first-run file
-# and on core's mutation corpus.
-test = { cmd = "dotnet test tests/ValheimHeadTracking.Tests/ValheimHeadTracking.Tests.csproj -c Release", depends-on = ["build"] }
+# and on core's mutation corpus, then core's canonical config lint over the committed file and
+# every file the test migrated.
+test = { cmd = "dotnet test tests/ValheimHeadTracking.Tests/ValheimHeadTracking.Tests.csproj -c Release && node tests/config_differential/lint-migrated.mjs tests/ValheimHeadTracking.Tests/bin/Release/net48/migrated", depends-on = ["build"] }
+# Rewrites config/CameraUnlock.ini from the config table after a change to a row, a comment or a
+# default. The render test compares the two on every `pixi run test`, so the committed file cannot
+# drift from the code.
+render-config = { cmd = "dotnet test tests/ValheimHeadTracking.Tests/ValheimHeadTracking.Tests.csproj -c Release --filter FullyQualifiedName~ConfigTests.CommittedFileIsTheRenderedDefaults && node cameraunlock-core/scripts/encode-seed.mjs", env = { CAMERAUNLOCK_RENDER_CONFIG = "write" }, depends-on = ["build"] }
 # Bump vendored mod-loader copies to latest upstream within pinned range.
 # Manual; commit the result. CI does not run this.
 update-deps = "powershell -ExecutionPolicy Bypass -File scripts/update-deps.ps1"
@@ -29,6 +34,10 @@ install = { cmd ="powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 Re
 package = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1", depends-on = ["test"] }
 uninstall = "scripts\\uninstall.cmd"
 clean = "dotnet clean src/ValheimHeadTracking/ValheimHeadTracking.csproj"
+
+# Checks the launcher contract against the built installer ZIP, and that the Nexus ZIP carries
+# no config.
+validate-manifest = "node cameraunlock-core/scripts/validate-manifest.mjs"
 
 # Validate release readiness (optional pre-check)
 validate-release = "powershell -ExecutionPolicy Bypass -File scripts/validate-release.ps1"
