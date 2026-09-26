@@ -97,3 +97,6 @@ docker-compose*.yml text eol=lf
 *.jar binary
 *.war binary
 *.ear binary
+
+# Differential test inputs are compared byte for byte, line endings included.
+tests/config_differential/data/** -text

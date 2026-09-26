@@ -1,0 +1,171 @@
+using System;
+using BepInEx.Configuration;
+using CameraUnlock.Core.Unity.BepInEx.Config;
+using UnityEngine;
+
+namespace ValheimHeadTracking
+{
+    /// <summary>
+    /// BepInEx configuration for Valheim head tracking.
+    /// Extends HeadTrackingConfigBase with Valheim-specific entries (position-Y limits,
+    /// world-space yaw, yaw-mode hotkey) via the base class's <see cref="OnInitialize"/>
+    /// and <see cref="OnRefreshCache"/> extension points. Exposes both the base and custom
+    /// entries as static accessors for the static-style access pattern used throughout the mod.
+    /// </summary>
+    public sealed class HeadTrackingConfig : HeadTrackingConfigBase
+    {
+        private static HeadTrackingConfig _instance;
+
+        private ConfigEntry<float> _positionLimitY;
+        private ConfigEntry<float> _positionLimitYDown;
+        private ConfigEntry<float> _localSmoothing;
+        private ConfigEntry<float> _remoteSmoothing;
+        private ConfigEntry<bool> _worldSpaceYaw;
+        private ConfigEntry<KeyCode> _yawModeKey;
+
+        // Hot-path cache. Refreshed in OnRefreshCache() which the base class triggers
+        // on every SettingChanged event. Avoids ConfigEntry<T>.Value dictionary lookups per frame.
+        private bool _cachedWorldSpaceYaw;
+
+        private static HeadTrackingConfig Instance =>
+            _instance ?? throw new InvalidOperationException(
+                "HeadTrackingConfig.Initialize() has not been called. " +
+                "Config must be initialized before accessing properties.");
+
+        // Base-typed view of the singleton. Needed to access inherited instance properties
+        // that are shadowed by the `static new` accessors below (otherwise `Instance.UdpPort`
+        // would bind to the static shadow property, not the inherited one).
+        private static HeadTrackingConfigBase Base => Instance;
+
+        /// <summary>
+        /// Initializes the configuration singleton.
+        /// Must be called from plugin Awake() before other components are initialized.
+        /// </summary>
+        public static new void Initialize(ConfigFile config)
+        {
+            _instance = new HeadTrackingConfig();
+            ((HeadTrackingConfigBase)_instance).Initialize(config);
+            _instance.OnConfigChanged += OpenTrackReceiver.UpdateProcessorSettings;
+
+            ValheimHeadTrackingPlugin.Log.LogInfo(
+                $"Configuration initialized: Port={UdpPort.Value}, EnableOnStartup={EnableOnStartup.Value}");
+        }
+
+        /// <summary>
+        /// Binds Valheim-specific entries. Invoked by <see cref="HeadTrackingConfigBase.Initialize"/>
+        /// after base entries are bound. Base RefreshCache() has already run once by this point;
+        /// we call it again here so the first population of our caches sees the bound entries.
+        /// </summary>
+        protected override void OnInitialize(ConfigFile config)
+        {
+            _positionLimitY = config.Bind(
+                "Position",
+                "PositionLimitY",
+                0.60f,
+                new ConfigDescription(
+                    "Maximum upward vertical displacement in meters",
+                    new AcceptableValueRange<float>(0f, 1.5f)));
+
+            _positionLimitYDown = config.Bind(
+                "Position",
+                "PositionLimitYDown",
+                0.40f,
+                new ConfigDescription(
+                    "Maximum downward vertical displacement in meters",
+                    new AcceptableValueRange<float>(0f, 1.5f)));
+
+            // Smoothing covers both rotation and position. The value used is selected
+            // per connection from the packet source address, so a local tracker and a
+            // phone on WiFi each get their own setting without a restart.
+            _localSmoothing = config.Bind(
+                "Smoothing",
+                "LocalSmoothing",
+                CameraUnlock.Core.Math.SmoothingUtils.DefaultLocalSmoothing,
+                new ConfigDescription(
+                    "Smoothing applied when the tracker runs on this machine (loopback). 0 = no smoothing, 1 = heavy.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+
+            _remoteSmoothing = config.Bind(
+                "Smoothing",
+                "RemoteSmoothing",
+                CameraUnlock.Core.Math.SmoothingUtils.DefaultRemoteSmoothing,
+                new ConfigDescription(
+                    "Smoothing applied when the tracker is a remote device on the network. 0 = no smoothing, 1 = heavy.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+
+            _worldSpaceYaw = config.Bind(
+                "General",
+                "WorldSpaceYaw",
+                true,
+                "Yaw mode: true = horizon-locked yaw (default), false = camera-local. " +
+                "Horizon-locked keeps yaw around the world up-axis at any pitch. Camera-local " +
+                "rotates around the view's current up-axis, which produces leaning at extreme pitches.");
+
+            _yawModeKey = config.Bind(
+                "Hotkeys",
+                "YawModeKey",
+                KeyCode.PageDown,
+                "Key to toggle yaw mode (world-locked vs camera-local)");
+
+            // Base RefreshCache() ran before OnInitialize, so our entries weren't in it.
+            // Run it now to populate subclass caches.
+            RefreshCache();
+
+            // Position limits live inside the processor's PositionSettings, not a per-frame
+            // cache, so changes must be pushed into the tracking pipeline.
+            _positionLimitY.SettingChanged += (_, __) => OpenTrackReceiver.UpdateProcessorSettings();
+            _positionLimitYDown.SettingChanged += (_, __) => OpenTrackReceiver.UpdateProcessorSettings();
+            _localSmoothing.SettingChanged += (_, __) => OpenTrackReceiver.UpdateProcessorSettings();
+            _remoteSmoothing.SettingChanged += (_, __) => OpenTrackReceiver.UpdateProcessorSettings();
+            _worldSpaceYaw.SettingChanged += (_, __) => RefreshCache();
+        }
+
+        protected override void OnRefreshCache()
+        {
+            // Base RefreshCache() fires once during base Initialize() before OnInitialize
+            // binds these entries. Skip until bindings exist.
+            if (_worldSpaceYaw == null) return;
+
+            _cachedWorldSpaceYaw = _worldSpaceYaw.Value;
+        }
+
+        protected override int DefaultUdpPort =>
+            CameraUnlock.Core.Protocol.OpenTrackReceiver.DefaultPort;
+
+        // --- Base entry accessors (static shim over the instance's inherited properties) ---
+        public static new ConfigEntry<int> UdpPort => Base.UdpPort;
+        public static new ConfigEntry<bool> EnableOnStartup => Base.EnableOnStartup;
+        public static new ConfigEntry<float> YawSensitivity => Base.YawSensitivity;
+        public static new ConfigEntry<float> PitchSensitivity => Base.PitchSensitivity;
+        public static new ConfigEntry<float> RollSensitivity => Base.RollSensitivity;
+        public static new ConfigEntry<bool> InvertYaw => Base.InvertYaw;
+        public static new ConfigEntry<bool> InvertPitch => Base.InvertPitch;
+        public static new ConfigEntry<bool> InvertRoll => Base.InvertRoll;
+        public static new ConfigEntry<KeyCode> ToggleKey => Base.ToggleKey;
+        public static new ConfigEntry<KeyCode> PositionToggleKey => Base.PositionToggleKey;
+        public static new ConfigEntry<KeyCode> ReticleToggleKey => Base.ReticleToggleKey;
+        public static new ConfigEntry<bool> EnableAimDecoupling => Base.EnableAimDecoupling;
+        public static new ConfigEntry<bool> ShowDecoupledCrosshair => Base.ShowDecoupledCrosshair;
+
+        // --- Base cached values (static shim) ---
+        public static new float CachedYawSensitivity => Base.CachedYawSensitivity;
+        public static new float CachedPitchSensitivity => Base.CachedPitchSensitivity;
+        public static new float CachedRollSensitivity => Base.CachedRollSensitivity;
+        public static new bool CachedInvertYaw => Base.CachedInvertYaw;
+        public static new bool CachedInvertPitch => Base.CachedInvertPitch;
+        public static new bool CachedInvertRoll => Base.CachedInvertRoll;
+        public static new bool CachedEnableAimDecoupling => Base.CachedEnableAimDecoupling;
+        public static new bool CachedShowDecoupledCrosshair => Base.CachedShowDecoupledCrosshair;
+
+        // --- Valheim-specific entries ---
+        public static ConfigEntry<float> PositionLimitY => Instance._positionLimitY;
+        public static ConfigEntry<float> PositionLimitYDown => Instance._positionLimitYDown;
+        public static ConfigEntry<float> LocalSmoothing => Instance._localSmoothing;
+        public static ConfigEntry<float> RemoteSmoothing => Instance._remoteSmoothing;
+        public static ConfigEntry<bool> WorldSpaceYaw => Instance._worldSpaceYaw;
+        public static ConfigEntry<KeyCode> YawModeKey => Instance._yawModeKey;
+
+        // --- Valheim-specific cached values ---
+        public static bool CachedWorldSpaceYaw => Instance._cachedWorldSpaceYaw;
+    }
+}

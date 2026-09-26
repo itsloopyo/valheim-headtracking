@@ -1,5 +1,4 @@
 using System;
-using BepInEx.Configuration;
 using CameraUnlock.Core.State;
 using CameraUnlock.Core.Tracking;
 using CameraUnlock.Core.Unity.Extensions;
@@ -22,10 +21,11 @@ namespace ValheimHeadTracking
 
         private void Start()
         {
-            _toggleBinding = new NavKeyBinding(HeadTrackingConfig.ToggleKey, () => HandleToggle(TrackingState.Toggle()));
-            _cycleModeBinding = new NavKeyBinding(HeadTrackingConfig.PositionToggleKey, CycleTrackingMode);
-            _reticleBinding = new NavKeyBinding(HeadTrackingConfig.ReticleToggleKey, ToggleReticle);
-            _yawModeBinding = new NavKeyBinding(HeadTrackingConfig.YawModeKey, ToggleYawMode);
+            var config = HeadTrackingConfig.Current;
+            _toggleBinding = new NavKeyBinding(config.ToggleKey, () => HandleToggle(TrackingState.Toggle()));
+            _cycleModeBinding = new NavKeyBinding(config.PositionToggleKey, CycleTrackingMode);
+            _reticleBinding = new NavKeyBinding(config.ReticleToggleKey, ToggleReticle);
+            _yawModeBinding = new NavKeyBinding(config.YawModeKey, ToggleYawMode);
         }
 
         private void Update()
@@ -58,8 +58,8 @@ namespace ValheimHeadTracking
 
         private void ToggleReticle()
         {
-            bool newValue = !HeadTrackingConfig.ShowDecoupledCrosshair.Value;
-            HeadTrackingConfig.ShowDecoupledCrosshair.Value = newValue;
+            bool newValue = !HeadTrackingConfig.Current.ShowDecoupledCrosshair;
+            HeadTrackingConfig.SetShowDecoupledCrosshair(newValue);
             string stateText = newValue ? "ON" : "OFF";
             ShowMessage($"Aim Reticle: {stateText}");
             ValheimHeadTrackingPlugin.Log.LogInfo($"Aim reticle toggled: {stateText}");
@@ -67,8 +67,8 @@ namespace ValheimHeadTracking
 
         private void ToggleYawMode()
         {
-            bool newValue = !HeadTrackingConfig.WorldSpaceYaw.Value;
-            HeadTrackingConfig.WorldSpaceYaw.Value = newValue;
+            bool newValue = !HeadTrackingConfig.Current.WorldSpaceYaw;
+            HeadTrackingConfig.SetWorldSpaceYaw(newValue);
             string stateText = newValue ? "WORLD-LOCKED" : "CAMERA-LOCAL";
             ShowMessage($"Yaw Mode: {stateText}");
             ValheimHeadTrackingPlugin.Log.LogInfo($"Yaw mode toggled: {stateText}");
@@ -110,21 +110,18 @@ namespace ValheimHeadTracking
         }
 
         /// <summary>
-        /// Encapsulates the poll-and-fire-on-edge pattern for a single nav-cluster key,
-        /// with its KeyCode value cached from the backing ConfigEntry and auto-refreshed
-        /// on SettingChanged (avoids a dictionary lookup per frame).
+        /// Encapsulates the poll-and-fire-on-edge pattern for a single nav-cluster key.
         /// </summary>
         private sealed class NavKeyBinding
         {
             private readonly Action _onPressed;
-            private KeyCode _key;
+            private readonly KeyCode _key;
             private bool _wasPressed;
 
-            public NavKeyBinding(ConfigEntry<KeyCode> entry, Action onPressed)
+            public NavKeyBinding(KeyCode key, Action onPressed)
             {
                 _onPressed = onPressed;
-                _key = entry.Value;
-                entry.SettingChanged += (_, __) => _key = entry.Value;
+                _key = key;
             }
 
             public void Poll()

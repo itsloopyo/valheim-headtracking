@@ -112,7 +112,7 @@ namespace ValheimHeadTracking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsDecoupled()
         {
-            if (!HeadTrackingConfig.CachedEnableAimDecoupling)
+            if (!HeadTrackingConfig.Current.EnableAimDecoupling)
             {
                 return false;
             }

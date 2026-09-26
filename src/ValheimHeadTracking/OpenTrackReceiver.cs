@@ -1,6 +1,7 @@
 using CameraUnlock.Core.Data;
 using CameraUnlock.Core.Processing;
 using CameraUnlock.Core.Tracking;
+using ValheimHeadTracking.Config;
 
 namespace ValheimHeadTracking
 {
@@ -70,39 +71,37 @@ namespace ValheimHeadTracking
         }
 
         /// <summary>
-        /// Updates the processor settings from config values.
-        /// Call this when config values change.
+        /// Pushes the settings into the processors.
         /// </summary>
-        public static void UpdateProcessorSettings()
+        private static void UpdateProcessorSettings()
         {
-            if (_processor == null) return;
-
             // Both smoothing values go to the processors as-is; the library selects
             // between them from the connection flag the session refreshes each Update()
             // off its own receiver. No floor is applied.
-            _processor.LocalSmoothing = HeadTrackingConfig.LocalSmoothing.Value;
-            _processor.RemoteSmoothing = HeadTrackingConfig.RemoteSmoothing.Value;
+            ValheimConfig config = HeadTrackingConfig.Current;
+            _processor.LocalSmoothing = config.LocalSmoothing;
+            _processor.RemoteSmoothing = config.RemoteSmoothing;
 
             // Configure sensitivity with inversion
             // Note: Pitch needs negation by default (OpenTrack up = Unity down)
             // Config.InvertPitch=false means "natural" = negate, so we invert the flag
             _processor.Sensitivity = new SensitivitySettings(
-                HeadTrackingConfig.CachedYawSensitivity,
-                HeadTrackingConfig.CachedPitchSensitivity,
-                HeadTrackingConfig.CachedRollSensitivity,
-                HeadTrackingConfig.CachedInvertYaw,
-                !HeadTrackingConfig.CachedInvertPitch,  // Inverted: default needs negation
-                HeadTrackingConfig.CachedInvertRoll
+                config.YawSensitivity,
+                config.PitchSensitivity,
+                config.RollSensitivity,
+                config.InvertYaw,
+                !config.InvertPitch,  // Inverted: default needs negation
+                config.InvertRoll
             );
 
             _positionProcessor.Settings = new PositionSettings(
                 PositionSensitivity, PositionSensitivity, PositionSensitivity,
                 PositionLimitX,
-                HeadTrackingConfig.PositionLimitY.Value,
-                HeadTrackingConfig.PositionLimitYDown.Value,
+                config.PositionLimitY,
+                config.PositionLimitYDown,
                 PositionLimitZ, PositionLimitZBack,
-                HeadTrackingConfig.LocalSmoothing.Value,
-                HeadTrackingConfig.RemoteSmoothing.Value,
+                config.LocalSmoothing,
+                config.RemoteSmoothing,
                 invertX: true, invertY: false, invertZ: false);
         }
 

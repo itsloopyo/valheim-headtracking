@@ -1,0 +1,51 @@
+# What the differential test compares, and where each file came from.
+# Columns: role, source (tag:path, a release asset, or the path in this repo), sha256 of the bytes.
+# v0.3.0 is the newest published release; there is no dev pre-release and no predecessor repo.
+# Its reader is src/ValheimHeadTracking/HeadTrackingConfig.cs over core's HeadTrackingConfigBase at
+# v0.3.0's pin (3465659). The oracle compiles both byte for byte, with oracle/Shims.cs standing in
+# for the two plugin members the first names, and takes the port and smoothing defaults from
+# core's OpenTrackReceiver.DefaultPort and SmoothingUtils at this repo's pin, which hold 4242, 0
+# and 0.15 as they did at v0.3.0's. The reader frozen into src/ValheimHeadTracking/Legacy comes
+# from bda2510: the same HeadTrackingConfig.cs over core's HeadTrackingConfigBase at 3f3a821,
+# which no longer binds RecenterKey (core e92f4bf, taken in 479b1f5), restructured to fill
+# LegacyConfig and write nothing, so comparison 1 is not empty by construction and runs on every
+# input.
+published reader	v0.3.0:src/ValheimHeadTracking/HeadTrackingConfig.cs	b51f72eb2a68a356766d5a39c481afd586c60a936020ab94aeeefeab4cda7f23
+oracle copy	tests/config_differential/oracle/HeadTrackingConfig.cs	b51f72eb2a68a356766d5a39c481afd586c60a936020ab94aeeefeab4cda7f23
+published reader	cameraunlock-core 3465659:csharp/src/CameraUnlock.Core.Unity.BepInEx/Config/HeadTrackingConfigBase.cs	0b3b33832d3a392f980044fb0647c47f34b7e246dcebf8e5d0e28bb416ffb727
+oracle copy	tests/config_differential/oracle/HeadTrackingConfigBase.cs	0b3b33832d3a392f980044fb0647c47f34b7e246dcebf8e5d0e28bb416ffb727
+frozen from	bda2510:src/ValheimHeadTracking/HeadTrackingConfig.cs	b51f72eb2a68a356766d5a39c481afd586c60a936020ab94aeeefeab4cda7f23
+frozen from	cameraunlock-core 3f3a821:csharp/src/CameraUnlock.Core.Unity.BepInEx/Config/HeadTrackingConfigBase.cs	eb4df51d3a888bccb89c215a6c7adf9bfbfeedb53d17be986bac3cbb4c4f51b0
+frozen reader	src/ValheimHeadTracking/Legacy/LegacyConfig.cs	89babd2499f5029474a5716682312cf3453a4750ffb05a0b05a0a64ca5a6367b
+frozen reader	src/ValheimHeadTracking/Legacy/LegacyConfigReader.cs	02f4ac96a30ecd25a4193c69c874c13c3670f7400b7cb1758c7fe28f6e18e9c7
+frozen reader	src/ValheimHeadTracking/Legacy/LegacyConfigKeys.cs	241115031857f7091095a92ef386d76a687ddd68bc76c5387c9bac4aac0868ec
+BepInEx	vendor/bepinex/BepInEx_win_x64.zip (BepInEx 5.4.23.5), whose BepInEx.dll the test and the first-run harness run	82f9878551030f54657792c0740d9d51a09500eeae1fba21106b0c441e6732c4
+# No published build shipped the plugin .cfg, in a ZIP or as a launcher-manifest.json seed (every
+# seed is BepInEx/config/BepInEx.cfg), so the inputs are what each build writes at its first start.
+# A first-run file is the .cfg that build's own ValheimHeadTracking.dll and CameraUnlock.Core.Unity.BepInEx.dll,
+# taken from its release installer ZIP, write when its HeadTrackingConfig.Initialize runs on a
+# ConfigFile at a path with no file and the plugin's own BepInPlugin metadata, as BaseUnityPlugin
+# builds it: the published binaries run once under the BepInEx above, with the Unity stubs of pixi
+# run setup. v0.1.0 to v0.2.0 were built against the game's own assemblies and name KeyCode in
+# UnityEngine.CoreModule, so their run adds a forwarder from that name to the stubs' types. The
+# "Acceptable values" comment lines list the stubs' KeyCode members, not the game's; no reader reads
+# a comment line. v0.1.0, v0.1.1 and v0.1.2 ship the same DLL, whose metadata says 1.0.5, and write
+# the same bytes, so one file stands for the three.
+input source	release v0.1.0 ValheimHeadTracking-v0.1.0-installer.zip plugins/ValheimHeadTracking.dll d0adf0b5b57565bfb3eaf09c821a08c850926325a34420b04d43fb271682350e plugins/CameraUnlock.Core.Unity.BepInEx.dll 833d8727615be020dd0a1051a44a2c87ddad858393bd0ecaf60f771d027c7494	-
+input source	release v0.1.1 ValheimHeadTracking-v0.1.1-installer.zip plugins/ValheimHeadTracking.dll d0adf0b5b57565bfb3eaf09c821a08c850926325a34420b04d43fb271682350e plugins/CameraUnlock.Core.Unity.BepInEx.dll 833d8727615be020dd0a1051a44a2c87ddad858393bd0ecaf60f771d027c7494	-
+input source	release v0.1.2 ValheimHeadTracking-v0.1.2-installer.zip plugins/ValheimHeadTracking.dll d0adf0b5b57565bfb3eaf09c821a08c850926325a34420b04d43fb271682350e plugins/CameraUnlock.Core.Unity.BepInEx.dll 833d8727615be020dd0a1051a44a2c87ddad858393bd0ecaf60f771d027c7494	-
+input	tests/config_differential/data/first-run/v0.1.0-v0.1.2.cfg	60c4458870c61417f2c473763fba70ebfac0ed0409d5fb7ace093bf596f05ad7
+input source	release v0.1.3 ValheimHeadTracking-v0.1.3-installer.zip plugins/ValheimHeadTracking.dll bac8a798c44a5a20d58e0f7fd5d808c5388fe861af660b4454bade65fa01f3e9 plugins/CameraUnlock.Core.Unity.BepInEx.dll 0f6e4011ece9623f14c1ce05dd7cf1e40e74965f7fca748fdf457bafcb4d4c77	-
+input	tests/config_differential/data/first-run/v0.1.3.cfg	e99234ca4547bba4e45fa15b5e0e180c1d25d265f12b74266466af4164e997a3
+input source	release v0.1.4 ValheimHeadTracking-v0.1.4-installer.zip plugins/ValheimHeadTracking.dll 1d85df90314e7374a1934f340f4f79faf3096b135f26e6dfadc2dd66b553db6f plugins/CameraUnlock.Core.Unity.BepInEx.dll 3431a2e76833acbc67b3b38c90dff54c36c2d25b1f2c6ef4d99b527658645769	-
+input	tests/config_differential/data/first-run/v0.1.4.cfg	114ebc05087664928bf190f4631a8c48d3f1b741cfe9a18767c021c91bf764b5
+input source	release v0.1.5 ValheimHeadTracking-v0.1.5-installer.zip plugins/ValheimHeadTracking.dll 5c6978b6f7fda23fb32dd301a013baeba8aceba6a396ecc5a5e928aa3e71ff56 plugins/CameraUnlock.Core.Unity.BepInEx.dll db9960be5744bd5425c27faec81ef490ba218dbae7d722b9c6de3ec3cb24ddca	-
+input	tests/config_differential/data/first-run/v0.1.5.cfg	a29e63330c9091ec6ca56d01c3a29359e4a6bbb5af389db7129c0d5d1c017596
+input source	release v0.2.0 ValheimHeadTracking-v0.2.0-installer.zip plugins/ValheimHeadTracking.dll aa400656149c02e9d2e376cd8e838a3ab0cfcffbf037af5fc62e3a2d027b1cd5 plugins/CameraUnlock.Core.Unity.BepInEx.dll 29525181e0c18def5cab33743f0a402dfdc12c91449bf990043b13f436b5e6eb	-
+input	tests/config_differential/data/first-run/v0.2.0.cfg	9361a93dd0022ef6de825dec2d5feb064909d05fd9c63d65200d8b450c4da335
+input source	release v0.2.1 ValheimHeadTracking-v0.2.1-installer.zip plugins/ValheimHeadTracking.dll d98dacd7a988ddf938ce424a667974028c1cac38a0d26bab6aef46ba1354741e plugins/CameraUnlock.Core.Unity.BepInEx.dll 093b58983df75cb9028e80a99d9c6fe04ea33c8f6a13d42b40f98a83ef38800e	-
+input	tests/config_differential/data/first-run/v0.2.1.cfg	fd8f439a3452eaadd00b49f9564959412d363b1bdb612ea4ae259235842f84d5
+input source	release v0.2.2 ValheimHeadTracking-v0.2.2-installer.zip plugins/ValheimHeadTracking.dll a7d2b9f0acab312bc471acc87f179be9743d12b06d54d2e1c69c71daeebb85bc plugins/CameraUnlock.Core.Unity.BepInEx.dll 73cc1ceafa26f5368e0e52096c398cf91ee6c63dd186f47f5779a6dda396cd6e	-
+input	tests/config_differential/data/first-run/v0.2.2.cfg	ddcf7beec9f4d47e46affd1fdba5904015f557aec1f5c92037a3e128718c7fad
+input source	release v0.3.0 ValheimHeadTracking-v0.3.0-installer.zip plugins/ValheimHeadTracking.dll 7fbb65920d93072945b0f11344c8eeec51ab39ef31fd408acc92fac7e4fe3f22 plugins/CameraUnlock.Core.Unity.BepInEx.dll 7d23f627c6f474b4fa41663bd136ab6ccbf245e4db81ea0e602d3dadcc7c0331	-
+input	tests/config_differential/data/first-run/v0.3.0.cfg	72c96ee17e568ac044a4cdb39a6675766e3d01b0f6ee174b5f3a1e1358287fb1

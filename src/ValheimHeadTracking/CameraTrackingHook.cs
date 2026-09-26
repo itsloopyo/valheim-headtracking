@@ -87,7 +87,7 @@ namespace ValheimHeadTracking
 
         /// <summary>
         /// Applies the session's processed rotation and position offset to the camera's
-        /// view matrix. Branches on HeadTrackingConfig.CachedWorldSpaceYaw:
+        /// view matrix. Branches on the WorldSpaceYaw setting:
         ///  - true (default): ApplyHeadRotationDecomposed, yaw around world up then local pitch/roll.
         ///  - false: ApplyHeadRotation, single camera-local YXZ quaternion (leans at extreme pitch).
         /// Camera.transform is never modified in either mode; aim decoupling still works.
@@ -107,7 +107,7 @@ namespace ValheimHeadTracking
             Vec3 posOffset = session.PositionOffset;
             Vector3 offset = new Vector3(posOffset.X, posOffset.Y, posOffset.Z);
 
-            if (HeadTrackingConfig.CachedWorldSpaceYaw)
+            if (HeadTrackingConfig.Current.WorldSpaceYaw)
             {
                 ViewMatrixModifier.ApplyHeadRotationDecomposed(_camera, yaw, pitch, roll, offset);
             }

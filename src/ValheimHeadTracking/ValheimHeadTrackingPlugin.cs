@@ -47,11 +47,11 @@ namespace ValheimHeadTracking
             Log.LogInfo("Configuration loaded");
 
             // Initialize state management
-            TrackingState.Initialize(HeadTrackingConfig.EnableOnStartup.Value);
+            TrackingState.Initialize(HeadTrackingConfig.Current.EnableOnStartup);
             Log.LogInfo($"Head tracking enabled: {TrackingState.IsEnabled}");
 
             // Initialize UDP receiver (retries automatically if port is in use)
-            OpenTrackReceiver.Start(HeadTrackingConfig.UdpPort.Value);
+            OpenTrackReceiver.Start(HeadTrackingConfig.Current.UdpPort);
 
             // Attach camera controller (manages CameraTrackingHook attachment)
             _cameraController = gameObject.AddComponent<CameraController>();
@@ -73,7 +73,7 @@ namespace ValheimHeadTracking
             if (_loggedFirstPacket || !OpenTrackReceiver.IsReceiving) return;
 
             _loggedFirstPacket = true;
-            Log.LogInfo($"First tracker packet received on port {HeadTrackingConfig.UdpPort.Value}");
+            Log.LogInfo($"First tracker packet received on port {HeadTrackingConfig.Current.UdpPort}");
         }
 
         private void OnDestroy()
