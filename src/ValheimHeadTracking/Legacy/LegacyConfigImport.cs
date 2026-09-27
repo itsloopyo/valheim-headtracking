@@ -24,6 +24,15 @@ namespace ValheimHeadTracking.Legacy
         /// <summary>The axis inversion every published build shipped on all three axes.</summary>
         public const bool ShippedInversion = false;
 
+        /// <summary>
+        /// PositionLimitY as v0.1.0 to v0.1.3 shipped it. BepInEx never rewrites a value already in
+        /// the .cfg, so a player who first ran one of those builds holds it untouched today.
+        /// </summary>
+        public const float ShippedBeforeV014PositionLimitY = 0.15f;
+
+        /// <summary>PositionLimitYDown as v0.1.0 to v0.1.3 shipped it.</summary>
+        public const float ShippedBeforeV014PositionLimitYDown = 0.05f;
+
         /// <param name="pluginConfig">The plugin's Config, whose file is the legacy file.</param>
         public static LegacyImport<ValheimConfig> For(ConfigFile pluginConfig)
         {
@@ -54,7 +63,8 @@ namespace ValheimHeadTracking.Legacy
         /// NaN and infinity into, so no value reaches here that normalisation N2 would change.
         /// </summary>
         /// <param name="follows">Given every row of the table that follows Defaults.ini, left there
-        /// where the .cfg holds what v0.3.0 shipped (the frozen <see cref="LegacyConfig"/> defaults).</param>
+        /// where the .cfg holds what v0.3.0 shipped (the frozen <see cref="LegacyConfig"/> defaults),
+        /// or for a vertical limit, what v0.1.0 to v0.1.3 shipped.</param>
         public static void Map(LegacyConfig legacy, ValheimConfig config, List<DroppedValue> dropped,
             List<PoseShapingValue> poseShaping, LegacyFollowsDefaultsIni follows)
         {
@@ -115,8 +125,10 @@ namespace ValheimHeadTracking.Legacy
                 p.InvertX, p.InvertY, p.InvertZ);
             follows.Setting(ConfigConcepts.LocalSmoothing, legacy.LocalSmoothing, shipped.LocalSmoothing);
             follows.Setting(ConfigConcepts.RemoteSmoothing, legacy.RemoteSmoothing, shipped.RemoteSmoothing);
-            follows.Setting(ConfigConcepts.PositionLimitY, legacy.PositionLimitY, shipped.PositionLimitY);
-            follows.Setting(ConfigConcepts.PositionLimitYDown, legacy.PositionLimitYDown, shipped.PositionLimitYDown);
+            follows.Setting(ConfigConcepts.PositionLimitY,
+                legacy.PositionLimitY == shipped.PositionLimitY || legacy.PositionLimitY == ShippedBeforeV014PositionLimitY);
+            follows.Setting(ConfigConcepts.PositionLimitYDown,
+                legacy.PositionLimitYDown == shipped.PositionLimitYDown || legacy.PositionLimitYDown == ShippedBeforeV014PositionLimitYDown);
         }
 
         /// <summary>

@@ -236,8 +236,17 @@ namespace ValheimHeadTracking.Tests.Differential
         };
 
         /// <summary>
+        /// Every value a published build's first-run file holds, as v0.3.0 read it. BepInEx never
+        /// rewrites a value already in the .cfg, so each is what a player who first ran that build
+        /// and never changed the setting holds today.
+        /// </summary>
+        private static readonly Lazy<LegacyConfig[]> FirstRunConfigs =
+            new Lazy<LegacyConfig[]>(() => Inputs.FirstRuns().Select(i => Oracle.Run(i).Config).ToArray());
+
+        /// <summary>
         /// The rows a .cfg read as <paramref name="old"/> leaves to Defaults.ini: each whose value is
-        /// what v0.3.0 shipped, and the tracking mode, which no build had a setting for.
+        /// what v0.3.0 shipped, a vertical limit that holds what any published build shipped, and
+        /// the tracking mode, which no build had a setting for.
         /// </summary>
         private static string[] Untouched(LegacyConfig old)
         {
@@ -254,8 +263,8 @@ namespace ValheimHeadTracking.Tests.Differential
             rows.Add("PositionEnabled");
             row("LocalSmoothing", old.LocalSmoothing.Equals(shipped.LocalSmoothing));
             row("RemoteSmoothing", old.RemoteSmoothing.Equals(shipped.RemoteSmoothing));
-            row("PositionLimitY", old.PositionLimitY.Equals(shipped.PositionLimitY));
-            row("PositionLimitYDown", old.PositionLimitYDown.Equals(shipped.PositionLimitYDown));
+            row("PositionLimitY", FirstRunConfigs.Value.Any(f => old.PositionLimitY.Equals(f.PositionLimitY)));
+            row("PositionLimitYDown", FirstRunConfigs.Value.Any(f => old.PositionLimitYDown.Equals(f.PositionLimitYDown)));
             return rows.ToArray();
         }
 
@@ -297,9 +306,9 @@ namespace ValheimHeadTracking.Tests.Differential
         }
 
         /// <summary>
-        /// The owner rule of 2026-09-26: a setting the player never changed from what v0.3.0 shipped
-        /// follows Defaults.ini. With no file, an empty file and the newest first-run file, every
-        /// row is left there, the tracking mode pair included.
+        /// The owner rule of 2026-09-26: a setting the player never changed from what their build
+        /// shipped follows Defaults.ini. With no file, an empty file and every published build's
+        /// first-run file, every row is left there, the tracking mode pair included.
         /// </summary>
         [Fact]
         public void EveryUntouchedRowFollowsDefaultsIni()
@@ -308,8 +317,7 @@ namespace ValheimHeadTracking.Tests.Differential
             {
                 new DifferentialInput("no file", null),
                 new DifferentialInput("empty file", new byte[0]),
-                new DifferentialInput("first run v0.3.0", Inputs.NewestFirstRun()),
-            };
+            }.Concat(Inputs.FirstRuns()).ToArray();
             foreach (DifferentialInput input in inputs)
             {
                 ImportOutcome import = ImportOutcome.Run(input);
