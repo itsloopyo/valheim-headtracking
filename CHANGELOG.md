@@ -5,11 +5,13 @@
 ### Changed
 
 - Settings move to `BepInEx\config\CameraUnlock.ini`. Earlier versions of the mod kept these settings in `com.cameraunlock.valheim.headtracking.cfg`, in the same folder. The first time this version starts and finds no `CameraUnlock.ini`, it reads your settings from `com.cameraunlock.valheim.headtracking.cfg` and writes them into `CameraUnlock.ini`. It never changes `com.cameraunlock.valheim.headtracking.cfg`, and does not read it again while `CameraUnlock.ini` exists.
-- A setting that the defaults the README shows set to `default` is written as `default` when the value imported for it equals its default at that start, which is the value `Defaults.ini` gives it, or the built-in value where `Defaults.ini` gives none. It then follows `Defaults.ini`. Every other setting is written with the value imported for it.
+- A setting that the defaults the README shows set to `default` is written as `default` when you never changed it from the default earlier versions used, because `com.cameraunlock.valheim.headtracking.cfg` does not hold it or holds that default. It then follows `Defaults.ini`, so it takes the value `Defaults.ini` gives it, or the built-in value where `Defaults.ini` gives none, which can differ from the default earlier versions used. A setting you changed is written with the value imported for it, or as `default` where that value equals its default at that start.
 - `RotationEnabled` and `PositionEnabled` are one setting here, the tracking mode, so both are written as `default` or neither is.
 - Comments, and keys the mod never read, are not carried over. Nor are these, where your old file had them:
   - A sensitivity or axis inversion you changed from its default. Set these in your tracker instead.
-  - Reticle settings, and a key that toggled the reticle. Here that is `ReticleToggleKey`, `ShowDecoupledCrosshair` and `EnableAimDecoupling`: set to false, either of the last two only kept the game's crosshair at the centre of the screen, since your aim stayed on the mouse whatever they held.
+  - Reticle settings, and a key that toggled the reticle. Here that is `ReticleToggleKey` and `ShowDecoupledCrosshair`: set to false, the last only kept the game's crosshair at the centre of the screen, since your aim stayed on the mouse whatever it held.
+  - The aim decoupling setting, `EnableAimDecoupling`. Aim is always decoupled now, so your aim stays with the mouse or controller while your head moves the view, even if your old file had decoupling turned off. In earlier versions of this mod, setting it to false only kept the game's crosshair at the centre of the screen.
+  - A hotkey set to Ctrl, Shift or Alt on its own. That key goes down before the key of any chord made with it, so the hotkey is left unbound, and it keeps its Ctrl+Shift chord.
 - An older version of the mod reads `com.cameraunlock.valheim.headtracking.cfg` and never reads `CameraUnlock.ini`, so a setting you change after updating is not in `com.cameraunlock.valheim.headtracking.cfg`.
 - Deleting only `CameraUnlock.ini` makes the next start read `com.cameraunlock.valheim.headtracking.cfg` again. To go back to the defaults, replace everything in `CameraUnlock.ini` with the defaults the README shows. Every setting they set to `default` then follows `Defaults.ini`.
 - BepInEx's ConfigurationManager no longer lists these settings. Edit `BepInEx\config\CameraUnlock.ini` with any text editor, then restart the game: the mod reads it when the game starts.
@@ -18,7 +20,7 @@
 - On Linux and macOS without Wine or Proton, this version reads its settings and saves none: it creates no `CameraUnlock.ini`, reads your settings from `com.cameraunlock.valheim.headtracking.cfg` again at every start while there is no `CameraUnlock.ini`, and a change made in game lasts until the game closes.
 - The tracking mode you pick with `Page Up` is saved to `CameraUnlock.ini` and is what the next start begins with. Earlier versions started every session in rotation and position. The yaw mode (`Page Down`) is saved as before, now to `CameraUnlock.ini`. `End` still changes the current session only.
 - The game's crosshair, and the name of what you are looking at, always move to where your aim points while head tracking turns the view. Earlier versions let `ShowDecoupledCrosshair`, `EnableAimDecoupling` or `Insert` keep them at the centre of the screen.
-- `PositionLimitY` and `PositionLimitYDown` in a new `CameraUnlock.ini` are `default`, whose built-in value is 0.2 for both, where earlier versions started at 0.6 and 0.4. A setting imported from `com.cameraunlock.valheim.headtracking.cfg` keeps the value it held there.
+- `PositionLimitY` and `PositionLimitYDown` in a new `CameraUnlock.ini` are `default`, whose built-in value is 0.2 for both, where earlier versions started at 0.6 and 0.4. A limit imported from `com.cameraunlock.valheim.headtracking.cfg` at 0.6 or 0.4, the value earlier versions started at, is written as `default` too and follows `Defaults.ini`; a limit you changed keeps the value it held there.
 - `[Hotkeys] RecenterKey` is not carried over from `com.cameraunlock.valheim.headtracking.cfg`. v0.3.0, which removed the recenter hotkey, still read the key and acted on it nowhere; cameraunlock-core e92f4bf, taken in 479b1f5, stopped reading it.
 
 ### Added
@@ -29,7 +31,8 @@
 
 ### Removed
 
-- The key that toggled the reticle (`Insert`, `Ctrl+Shift+U`), and the crosshair settings (`ReticleToggleKey`, `ShowDecoupledCrosshair`, `EnableAimDecoupling`).
+- The key that toggled the reticle (`Insert`, `Ctrl+Shift+U`), and the crosshair settings (`ReticleToggleKey`, `ShowDecoupledCrosshair`).
+- The aim decoupling setting (`EnableAimDecoupling`). Aim is always decoupled: your aim stays with the mouse or controller while your head moves the view.
 - The sensitivity and axis inversion settings (`YawSensitivity`, `PitchSensitivity`, `RollSensitivity`, `InvertYaw`, `InvertPitch`, `InvertRoll`). Set these in your tracker app instead.
 - With these settings at their shipped defaults the camera moves as it did before.
 

@@ -42,35 +42,49 @@ namespace ValheimHeadTracking.Legacy
             LegacyConfig legacy = LegacyConfigReader.Read(pluginConfig, out found);
             var dropped = new List<DroppedValue>();
             var poseShaping = new List<PoseShapingValue>();
-            Map(legacy, config, dropped, poseShaping);
-            return found ? ImportResult.Imported(dropped, poseShaping) : ImportResult.Absent(dropped, poseShaping);
+            var follows = new LegacyFollowsDefaultsIni();
+            Map(legacy, config, dropped, poseShaping, follows);
+            return found
+                ? ImportResult.Imported(dropped, poseShaping, follows.Concepts)
+                : ImportResult.Absent(dropped, poseShaping, follows.Concepts);
         }
 
         /// <summary>
         /// Every float the reader returns is inside its AcceptableValueRange, which BepInEx clamps
         /// NaN and infinity into, so no value reaches here that normalisation N2 would change.
         /// </summary>
+        /// <param name="follows">Given every row of the table that follows Defaults.ini, left there
+        /// where the .cfg holds what v0.3.0 shipped (the frozen <see cref="LegacyConfig"/> defaults).</param>
         public static void Map(LegacyConfig legacy, ValheimConfig config, List<DroppedValue> dropped,
-            List<PoseShapingValue> poseShaping)
+            List<PoseShapingValue> poseShaping, LegacyFollowsDefaultsIni follows)
         {
+            var shipped = new LegacyConfig();
+
             config.UdpPort = legacy.UdpPort;
             config.EnableOnStartup = legacy.EnableOnStartup;
             config.WorldSpaceYaw = legacy.WorldSpaceYaw;
+            follows.Setting(ConfigConcepts.UdpPort, legacy.UdpPort, shipped.UdpPort);
+            follows.Setting(ConfigConcepts.EnableOnStartup, legacy.EnableOnStartup, shipped.EnableOnStartup);
+            follows.Setting(ConfigConcepts.WorldSpaceYaw, legacy.WorldSpaceYaw, shipped.WorldSpaceYaw);
 
-            config.ToggleKeyName = HotkeyList(legacy.ToggleKey, KeyCode.Y);
-            config.CycleTrackingModeKeyName = HotkeyList(legacy.PositionToggleKey, KeyCode.G);
-            config.YawModeKeyName = HotkeyList(legacy.YawModeKey, KeyCode.H);
+            config.ToggleKeyName = HotkeyList(legacy.ToggleKey, KeyCode.Y, "ToggleKey", dropped);
+            config.CycleTrackingModeKeyName = HotkeyList(legacy.PositionToggleKey, KeyCode.G, "PositionToggleKey", dropped);
+            config.YawModeKeyName = HotkeyList(legacy.YawModeKey, KeyCode.H, "YawModeKey", dropped);
+            follows.Setting(ConfigConcepts.ToggleKey, legacy.ToggleKey, shipped.ToggleKey);
+            follows.Setting(ConfigConcepts.CycleTrackingModeKey, legacy.PositionToggleKey, shipped.PositionToggleKey);
+            follows.Setting(ConfigConcepts.YawModeKey, legacy.YawModeKey, shipped.YawModeKey);
 
-            // The game's crosshair now always follows the aim. Both switches only stopped it
-            // following: the aim itself stayed on the mouse whatever they held. So a player who
-            // kept either at its shipped true loses nothing, and the reticle key is gone for all.
+            // The game's crosshair now always follows the aim, and the aim is always decoupled.
+            // EnableAimDecoupling is the aim decoupling switch under its BepInEx spelling, and
+            // ShowDecoupledCrosshair only stopped the crosshair following. A player who kept
+            // either at its shipped true loses nothing, and the reticle key is gone for all.
             if (legacy.ReticleToggleKey != KeyCode.None)
             {
                 dropped.Add(new DroppedValue(DropRule.Reticle, "Hotkeys", "ReticleToggleKey", KeyText((int)legacy.ReticleToggleKey)));
             }
             if (!legacy.EnableAimDecoupling)
             {
-                dropped.Add(new DroppedValue(DropRule.Reticle, "Aim Decoupling", "EnableAimDecoupling", "false"));
+                dropped.Add(new DroppedValue(DropRule.CoupledAim, "Aim Decoupling", "EnableAimDecoupling", "false"));
             }
             if (!legacy.ShowDecoupledCrosshair)
             {
@@ -86,8 +100,10 @@ namespace ValheimHeadTracking.Legacy
 
             // The published builds started every session in rotation and position, and the cycle
             // key changed the mode for that session only.
+            // No build had a setting for it, so no player chose it.
             config.RotationEnabled = true;
             config.PositionEnabled = true;
+            follows.TrackingMode(true);
 
             config.LocalSmoothing = legacy.LocalSmoothing;
             config.RemoteSmoothing = legacy.RemoteSmoothing;
@@ -97,19 +113,32 @@ namespace ValheimHeadTracking.Legacy
                 p.LimitX, legacy.PositionLimitY, legacy.PositionLimitYDown, p.LimitZ, p.LimitZBack,
                 legacy.LocalSmoothing, legacy.RemoteSmoothing,
                 p.InvertX, p.InvertY, p.InvertZ);
+            follows.Setting(ConfigConcepts.LocalSmoothing, legacy.LocalSmoothing, shipped.LocalSmoothing);
+            follows.Setting(ConfigConcepts.RemoteSmoothing, legacy.RemoteSmoothing, shipped.RemoteSmoothing);
+            follows.Setting(ConfigConcepts.PositionLimitY, legacy.PositionLimitY, shipped.PositionLimitY);
+            follows.Setting(ConfigConcepts.PositionLimitYDown, legacy.PositionLimitYDown, shipped.PositionLimitYDown);
         }
 
         /// <summary>
         /// The keys v0.3.0 fired an action on: the configured key, unless it was None, and the
-        /// Ctrl+Shift chord HotkeyHandler checked beside it. A key code Unity names no key for
+        /// Ctrl+Shift chord HotkeyHandler checked beside it. A Ctrl, Shift or Alt key alone is
+        /// unbound under N3 and recorded, and the chord stays. A key code Unity names no key for
         /// (a number in the .cfg, which BepInEx's enum parse accepts) is written as that number,
         /// which no hotkey list reads, so the owner defers the import and says which line.
         /// </summary>
-        public static string HotkeyList(KeyCode primary, KeyCode chordLetter)
+        public static string HotkeyList(KeyCode primary, KeyCode chordLetter, string key, List<DroppedValue> dropped)
         {
             string chord = KeyBindings.Format(new[] { new KeyBinding(KeyModifiers.Ctrl | KeyModifiers.Shift, (int)chordLetter) });
-            if (primary == KeyCode.None) return chord;
-            return KeyText((int)primary) + ", " + chord;
+            string text;
+            try
+            {
+                text = LegacyNormalisations.KeyCodeToBindings((int)primary, "Hotkeys", key, dropped);
+            }
+            catch (ArgumentException)
+            {
+                text = ((int)primary).ToString(CultureInfo.InvariantCulture);
+            }
+            return text.Length == 0 ? chord : text + ", " + chord;
         }
 
         private static string KeyText(int unityKeyCode)
