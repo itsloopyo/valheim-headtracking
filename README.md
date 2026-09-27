@@ -2,20 +2,13 @@
 
 ![Valheim running with this mod](https://raw.githubusercontent.com/itsloopyo/valheim-headtracking/main/assets/readme-clip.gif)
 
-An unofficial head tracking mod for Valheim that moves the camera with your head while your mouse or controller keeps aiming, driven by OpenTrack over UDP, with no VR headset required.
-
-> **Settings have moved.** This version keeps its settings in `BepInEx\config\CameraUnlock.ini`.
-> The first time it starts it reads your settings from the old
-> `BepInEx\config\com.cameraunlock.valheim.headtracking.cfg` into the new file, and leaves
-> the old file as it was. BepInEx's ConfigurationManager no longer lists the settings: edit
-> `CameraUnlock.ini` with any text editor. [Configuration](#configuration) has the details.
+An unofficial head tracking mod for Valheim that moves the camera with your head while your mouse or controller keeps aiming, driven by a webcam, phone, or any OpenTrack compatible tracker, with no VR headset required.
 
 ## Features
 
 - **Decoupled look and aim** - head tracking moves the camera; aim stays on your mouse.
 - **6DOF positional tracking** - lean, peek, and duck with head position in addition to yaw / pitch / roll.
 - **Works with any OpenTrack compatible tracker** - free options available for PC, iOS and Android
-- **Cycle tracking modes** - one key cycles between full 6DOF, 3DOF rotation only, and 3DOF position only.
 
 ## Requirements
 
@@ -137,29 +130,15 @@ The game's crosshair, and the name of whatever you are looking at, move to where
 <!-- cameraunlock:config -->
 The mod reads its settings from `BepInEx\config\CameraUnlock.ini` in the game folder, and creates the file when it starts and finds none. Edit it with any text editor.
 
-A setting set to `default` takes its value from `Defaults.ini`, which every head tracking mod that keeps its settings in `CameraUnlock.ini` reads. Head tracking mods that keep their settings in another file do not read it, and neither do earlier versions of this mod. Writing a value in place of `default` changes that setting for this game only. When the mod saves a setting that a hotkey changed in game, it writes the new value in place of `default`, so that setting no longer follows `Defaults.ini` in this game until you set it to `default` again.
+A setting set to `default` takes its value from `Defaults.ini`, which every head tracking mod that keeps its settings in `CameraUnlock.ini` reads. Head tracking mods that keep their settings in another file do not read it. Writing a value in place of `default` changes that setting for this game only. When the mod saves a setting that a hotkey changed in game, it writes the new value in place of `default`, so that setting no longer follows `Defaults.ini` in this game until you set it to `default` again.
 
 `Defaults.ini` is `%AppData%\CameraUnlock\Defaults.ini` on Windows; `$XDG_CONFIG_HOME/CameraUnlock/Defaults.ini` on Linux, or `~/.config/CameraUnlock/Defaults.ini` where `XDG_CONFIG_HOME` is not set, under Wine and Proton too; and `~/Library/Application Support/CameraUnlock/Defaults.ini` on macOS. The mod's log, where it writes one, names the file it read.
 
 When the mod starts and finds no `Defaults.ini`, it creates one holding the built-in values, unless Windows runs the game as a packaged app, or the game runs on Linux or macOS without Wine or Proton. The mod never changes `Defaults.ini` after that. Edit it with any text editor.
 
-Earlier versions of the mod kept these settings in `com.cameraunlock.valheim.headtracking.cfg`, in the same folder. The first time this version starts and finds no `CameraUnlock.ini`, it reads your settings from `com.cameraunlock.valheim.headtracking.cfg` and writes them into `CameraUnlock.ini`. It never changes `com.cameraunlock.valheim.headtracking.cfg`, and does not read it again while `CameraUnlock.ini` exists.
+On Linux and macOS without Wine or Proton, this version reads its settings and saves none: it creates no `CameraUnlock.ini` and a change made in game lasts until the game closes.
 
-A setting that the defaults below set to `default` is written as `default` when the value imported for it equals its default at that start, which is the value `Defaults.ini` gives it, or the built-in value where `Defaults.ini` gives none. It then follows `Defaults.ini`. Every other setting is written with the value imported for it. `RotationEnabled` and `PositionEnabled` are one setting here, the tracking mode, so both are written as `default` or neither is.
-
-Comments, and keys the mod never read, are not carried over. Nor are these, where your old file had them:
-
-- Reticle settings, and a key that toggled the reticle.
-- A sensitivity, scale, deadzone, response curve or axis inversion you changed from its default. Set these in your tracker instead.
-- The setting for a feature that earlier versions shipped switched off while it was untested. It now follows the mod's default.
-
-An older version of the mod reads `com.cameraunlock.valheim.headtracking.cfg` and never reads `CameraUnlock.ini`, so a setting you change after updating is not in `com.cameraunlock.valheim.headtracking.cfg`.
-
-Deleting only `CameraUnlock.ini` makes the next start read `com.cameraunlock.valheim.headtracking.cfg` again. To go back to the defaults, replace everything in `CameraUnlock.ini` with the defaults below. Every setting they set to `default` then follows `Defaults.ini`.
-
-On Linux and macOS without Wine or Proton, this version reads its settings and saves none: it creates no `CameraUnlock.ini`, reads your settings from `com.cameraunlock.valheim.headtracking.cfg` again at every start while there is no `CameraUnlock.ini`, and a change made in game lasts until the game closes.
-
-BepInEx's ConfigurationManager no longer lists these settings.
+BepInEx's ConfigurationManager does not list these settings.
 
 The built-in value of each setting set to `default` below:
 
@@ -277,7 +256,7 @@ Download the new release and run `install.cmd` again. Your `CameraUnlock.ini` is
 
 ## Uninstalling
 
-Run `uninstall.cmd` from the release folder. This removes the mod DLLs and leaves `BepInEx\config\CameraUnlock.ini` and the old `.cfg` in place. The mod loader (BepInEx) is only removed if the installer put it there. To force-remove BepInEx:
+Run `uninstall.cmd` from the release folder. This removes the mod DLLs and leaves `BepInEx\config\CameraUnlock.ini` in place. The mod loader (BepInEx) is only removed if the installer put it there. To force-remove BepInEx:
 
 ```
 uninstall.cmd /force
