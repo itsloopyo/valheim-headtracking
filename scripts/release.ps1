@@ -99,6 +99,7 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 # Step 1: Resolve major/minor/patch into a concrete version (or accept literal X.Y.Z)
 try {
     $Version = Resolve-ReleaseVersion -Argument $Version -CurrentVersion $currentVersion
+    Assert-ReleaseNotBelowCanonicalSince -RepoRoot $projectDir -Version $Version
 } catch {
     Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
