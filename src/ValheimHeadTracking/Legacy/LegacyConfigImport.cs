@@ -134,22 +134,14 @@ namespace ValheimHeadTracking.Legacy
         /// <summary>
         /// The keys v0.3.0 fired an action on: the configured key, unless it was None, and the
         /// Ctrl+Shift chord HotkeyHandler checked beside it. A Ctrl, Shift or Alt key alone is
-        /// unbound under N3 and recorded, and the chord stays. A key code Unity names no key for
-        /// (a number in the .cfg, which BepInEx's enum parse accepts) is written as that number,
-        /// which no hotkey list reads, so the owner defers the import and says which line.
+        /// unbound under N3 and recorded, and the chord stays. So is a key code Unity names no key
+        /// for (a number in the .cfg, which BepInEx's enum parse accepts), recorded as
+        /// KeyCodeOutOfRange (N1).
         /// </summary>
         public static string HotkeyList(KeyCode primary, KeyCode chordLetter, string key, List<DroppedValue> dropped)
         {
             string chord = KeyBindings.Format(new[] { new KeyBinding(KeyModifiers.Ctrl | KeyModifiers.Shift, (int)chordLetter) });
-            string text;
-            try
-            {
-                text = LegacyNormalisations.KeyCodeToBindings((int)primary, "Hotkeys", key, dropped);
-            }
-            catch (ArgumentException)
-            {
-                text = ((int)primary).ToString(CultureInfo.InvariantCulture);
-            }
+            string text = LegacyNormalisations.KeyCodeToBindings((int)primary, "Hotkeys", key, dropped);
             return text.Length == 0 ? chord : text + ", " + chord;
         }
 
