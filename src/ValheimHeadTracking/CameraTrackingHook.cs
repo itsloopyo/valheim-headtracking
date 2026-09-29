@@ -56,7 +56,9 @@ namespace ValheimHeadTracking
             // and the local/remote connection flag that selects which smoothing value
             // applies). False only when no tracker data has ever arrived.
             HeadTrackingSession session = OpenTrackReceiver.Session;
-            if (session == null || !session.Update(Time.deltaTime))
+            // Unscaled: the head moves in real time, and GameCamera itself updates on
+            // unscaled time.
+            if (session == null || !session.Update(Time.unscaledDeltaTime))
             {
                 ResetIfTracking();
                 return;
