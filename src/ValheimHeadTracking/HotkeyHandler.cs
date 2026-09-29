@@ -1,3 +1,5 @@
+using System;
+using System.Reflection;
 using CameraUnlock.Core.Input;
 using CameraUnlock.Core.State;
 using CameraUnlock.Core.Tracking;
@@ -17,6 +19,11 @@ namespace ValheimHeadTracking
         private KeyBinding[] _toggle;
         private KeyBinding[] _cycleTrackingMode;
         private KeyBinding[] _yawMode;
+
+        // MessageHud.ShowMessage gained a trailing optional parameter in the 2026-09-26 update, so
+        // a direct call binds to one arity and throws MissingMethodException on the other build.
+        private static MethodInfo _showMessage;
+        private static object[] _showMessageDefaults;
 
         private void Start()
         {
@@ -97,14 +104,51 @@ namespace ValheimHeadTracking
         /// </summary>
         private static void ShowMessage(string text)
         {
-            if (MessageHud.instance != null)
-            {
-                MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, text);
-            }
-            else
+            MessageHud hud = MessageHud.instance;
+            if (hud == null)
             {
                 ValheimHeadTrackingPlugin.Log.LogInfo($"[HUD unavailable] {text}");
+                return;
             }
+
+            if (_showMessage == null) ResolveShowMessage();
+
+            object[] args = (object[])_showMessageDefaults.Clone();
+            args[0] = MessageHud.MessageType.Center;
+            args[1] = text;
+            _showMessage.Invoke(hud, args);
+        }
+
+        private static void ResolveShowMessage()
+        {
+            foreach (MethodInfo method in typeof(MessageHud).GetMethods(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (method.Name != "ShowMessage") continue;
+                ParameterInfo[] parameters = method.GetParameters();
+                if (parameters.Length < 2
+                    || parameters[0].ParameterType != typeof(MessageHud.MessageType)
+                    || parameters[1].ParameterType != typeof(string))
+                {
+                    continue;
+                }
+
+                var defaults = new object[parameters.Length];
+                for (int i = 2; i < parameters.Length; i++)
+                {
+                    if (!parameters[i].IsOptional)
+                    {
+                        throw new MissingMethodException(
+                            "MessageHud.ShowMessage parameter '" + parameters[i].Name + "' has no default");
+                    }
+                    defaults[i] = parameters[i].DefaultValue;
+                }
+
+                _showMessageDefaults = defaults;
+                _showMessage = method;
+                return;
+            }
+
+            throw new MissingMethodException("MessageHud", "ShowMessage(MessageType, string, ...)");
         }
 
         // The table's hotkey codec has read every list the file holds, and the legacy import
@@ -114,7 +158,7 @@ namespace ValheimHeadTracking
             KeyBinding[] bindings;
             string error;
             if (!KeyBindings.TryParse(text, out bindings, out error))
-                throw new System.InvalidOperationException("[Hotkeys] " + key + "=" + text + ": " + error);
+                throw new InvalidOperationException("[Hotkeys] " + key + "=" + text + ": " + error);
             return bindings;
         }
     }

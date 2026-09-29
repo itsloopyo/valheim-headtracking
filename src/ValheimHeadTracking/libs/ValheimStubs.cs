@@ -12,9 +12,9 @@
 //     assembly.
 //   - `m_eye` is declared on Character, not Player. A field reference binds to
 //     its declaring type, so the hierarchy has to be modelled.
-//   - MessageHud.ShowMessage has five parameters with defaults. C# bakes the
-//     defaults in at the call site, so a two-parameter stub emits a call to a
-//     method that does not exist.
+//   - MessageHud.ShowMessage is not declared: its optional parameter list differs
+//     between game builds, and C# bakes the defaults in at the call site, so the
+//     mod binds it by reflection instead.
 // Verified against the shipped assembly's public API. Adding a call to a new
 // game member means adding its exact signature here.
 
@@ -92,7 +92,4 @@ public class MessageHud : MonoBehaviour
     public static MessageHud instance => null;
 
     public enum MessageType { TopLeft = 1, Center }
-
-    public void ShowMessage(MessageType type, string text, int amount = 0,
-                            Sprite icon = null, bool showDespiteHiddenHUD = false) { }
 }
