@@ -87,6 +87,12 @@ public class Console : MonoBehaviour
     public static bool IsVisible() => false;
 }
 
+public class Chat : MonoBehaviour
+{
+    public static Chat instance => null;
+    public bool HasFocus() => false;
+}
+
 public class MessageHud : MonoBehaviour
 {
     public static MessageHud instance => null;

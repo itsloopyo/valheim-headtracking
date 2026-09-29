@@ -85,7 +85,9 @@ namespace ValheimHeadTracking
         /// </summary>
         private static bool IsTextInputActive()
         {
-            return TextInput.IsVisible() || Console.IsVisible();
+            // End, PageUp and PageDown are caret keys in a text field.
+            Chat chat = Chat.instance;
+            return TextInput.IsVisible() || Console.IsVisible() || (chat != null && chat.HasFocus());
         }
 
         /// <summary>
