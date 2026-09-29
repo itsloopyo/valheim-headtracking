@@ -17,14 +17,7 @@ namespace ValheimHeadTracking
     public sealed class CameraTrackingHook : MonoBehaviour
     {
         private Camera _camera;
-        private Vector3 _lastAppliedRotation;
         private bool _wasTracking;
-
-        /// <summary>
-        /// Gets the last applied tracking rotation (yaw, pitch, roll in degrees).
-        /// Useful for aim decoupling calculations.
-        /// </summary>
-        public Vector3 LastAppliedRotation => _lastAppliedRotation;
 
         private void Awake()
         {
@@ -71,6 +64,7 @@ namespace ValheimHeadTracking
             }
 
             ApplyTracking(session);
+            CrosshairOffset.Follow(_camera);
         }
 
         /// <summary>
@@ -82,8 +76,8 @@ namespace ValheimHeadTracking
             if (_wasTracking && _camera != null)
             {
                 ViewMatrixModifier.Reset(_camera);
+                CrosshairOffset.Restore();
                 _wasTracking = false;
-                _lastAppliedRotation = Vector3.zero;
             }
         }
 
@@ -118,7 +112,6 @@ namespace ValheimHeadTracking
                 ViewMatrixModifier.ApplyHeadRotation(_camera, yaw, pitch, roll, offset);
             }
 
-            _lastAppliedRotation = new Vector3(pitch, yaw, roll);
             _wasTracking = true;
         }
 
@@ -128,6 +121,7 @@ namespace ValheimHeadTracking
             {
                 ViewMatrixModifier.Reset(_camera);
             }
+            CrosshairOffset.Restore();
             ValheimHeadTrackingPlugin.Log.LogInfo("CameraTrackingHook destroyed");
         }
     }

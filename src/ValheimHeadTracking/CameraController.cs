@@ -71,12 +71,6 @@ namespace ValheimHeadTracking
         }
 
         /// <summary>
-        /// Gets the currently attached hook, if any.
-        /// Useful for accessing tracking state (e.g., for aim decoupling).
-        /// </summary>
-        public CameraTrackingHook CurrentHook => TrackingHook as CameraTrackingHook;
-
-        /// <summary>
         /// Logs cleanup on destroy.
         /// </summary>
         protected override void OnDestroy()

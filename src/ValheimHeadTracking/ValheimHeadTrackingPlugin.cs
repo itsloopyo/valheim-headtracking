@@ -11,9 +11,9 @@ namespace ValheimHeadTracking
     /// Architecture:
     /// - OpenTrackReceiver: Receives UDP packets from OpenTrack (background thread)
     /// - CameraController: Watches for GameCamera and attaches CameraTrackingHook
-    /// - CameraTrackingHook: Applies head tracking via view matrix in OnPreCull
+    /// - CameraTrackingHook: Applies head tracking via view matrix in OnPreCull, then moves
+    ///   the game's crosshair to where the aim lands (CrosshairOffset)
     /// - HotkeyHandler: Handles the toggle (End) and mode hotkeys
-    /// - CrosshairOffsetHook: Moves the game's crosshair to show the actual aim position
     /// </summary>
     [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
     public class ValheimHeadTrackingPlugin : BaseUnityPlugin
@@ -60,10 +60,6 @@ namespace ValheimHeadTracking
             // Attach hotkey handler
             gameObject.AddComponent<HotkeyHandler>();
             Log.LogInfo("Hotkey handler initialized");
-
-            // Attach crosshair offset hook
-            gameObject.AddComponent<CrosshairOffsetHook>();
-            Log.LogInfo("Crosshair offset hook initialized");
 
             Log.LogInfo($"{PLUGIN_NAME} loaded successfully!");
         }
