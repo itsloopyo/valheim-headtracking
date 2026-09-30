@@ -40,6 +40,7 @@ namespace ValheimHeadTracking
         {
             Instance = this;
             Log = Logger;
+            gameObject.AddComponent<StartupWindow>();
             Log.LogInfo($"{PLUGIN_NAME} v{PLUGIN_VERSION} loading...");
 
             // Settings are read from BepInEx\config\CameraUnlock.ini; Config is only the legacy
